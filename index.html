@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WRI Incident Response</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+    <p id="loadingText">Loading...</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 0: PIN GATE
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-pin" class="screen">
+    <div class="signin-container" style="max-width:340px">
+      <div class="signin-logo">
+        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+        <div class="logo-sub">External Responder Gateway</div>
+      </div>
+      <div style="text-align:center;color:#9ca3af;font-size:13px;margin-bottom:20px;">Enter the access code provided by the incident team.</div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
+        <input type="tel" id="pin-1" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,2)" onfocus="this.select()">
+        <input type="tel" id="pin-2" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,3)" onfocus="this.select()">
+        <input type="tel" id="pin-3" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,4)" onfocus="this.select()">
+        <input type="tel" id="pin-4" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,null)">
+      </div>
+      <button onclick="submitPin()" style="width:100%;padding:14px;background:#cc0000;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;">Enter</button>
+      <div id="pin-error" style="color:#ef4444;text-align:center;font-size:13px;min-height:20px;margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 1: SIGN-IN
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-signin" class="screen">
+    <div class="signin-container">
+      <div class="signin-logo">
+        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+        <div class="logo-sub">External Responder Gateway</div>
+      </div>
+
+      <div class="signin-incident">
+        <div class="label">Active Incident</div>
+        <div class="name" id="signinIncidentName"></div>
+      </div>
+
+      <div id="signinExpiredMsg" class="signin-expired hidden">
+        Your previous session has expired. Please sign in again.
+      </div>
+
+      <form id="signinForm" autocomplete="off">
+        <div class="checkbox-group" style="background:rgba(233,69,96,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
+          <input type="checkbox" id="signinSafetyBriefing" required>
+          <label for="signinSafetyBriefing" style="font-weight:600;">I have received or will receive a safety briefing before beginning work</label>
+        </div>
+        <div class="form-group">
+          <label for="signinName">Full Name</label>
+          <input type="text" id="signinName" placeholder="e.g. Jane Smith" required>
+        </div>
+        <div class="form-group">
+          <label for="signinOrg">Organization</label>
+          <input type="text" id="signinOrg" placeholder="e.g. County Fire Dept" required>
+        </div>
+        <div class="form-group">
+          <label for="signinRole">ICS Position</label>
+          <input type="text" id="signinRole" list="roleList" placeholder="Start typing position..." required>
+          <datalist id="roleList"></datalist>
+        </div>
+        <div class="form-group">
+          <label for="signinPhone">Phone</label>
+          <input type="tel" id="signinPhone" placeholder="(555) 555-1234" required>
+        </div>
+        <div class="form-group">
+          <label for="signinEmail">Email</label>
+          <input type="email" id="signinEmail" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="signinLocation">Check-In Location</label>
+          <input type="text" id="signinLocation" placeholder="e.g., ICP, Staging Area A" required>
+        </div>
+        <div class="form-group">
+          <label for="signinWorkDesc">Work Description</label>
+          <textarea id="signinWorkDesc" placeholder="Brief description of your role/tasks"></textarea>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="signinHasResources">
+          <label for="signinHasResources">I have resources to log</label>
+        </div>
+        <div class="checkbox-group" id="gwCertToggleWrap">
+          <input type="checkbox" id="gwCertToggle">
+          <label for="gwCertToggle">Include my certifications with this check-in</label>
+        </div>
+        <div id="gwCertSection" style="display:none;border:1px solid var(--color-primary,#1E90FF);border-radius:6px;background:rgba(30,144,255,.05);padding:12px;margin-bottom:12px">
+          <div id="gwCertPrefilledMsg" style="display:none;font-size:12px;color:#0a8043;margin-bottom:8px;font-style:italic"></div>
+          <div id="gwCertLoading" style="font-size:12px;color:#666;font-style:italic;padding:6px 0">Loading certifications…</div>
+          <div id="gwCertList"></div>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block" id="signinBtn">
+          Check In
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 2: RESUME
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-resume" class="screen">
+    <div class="resume-container">
+      <div class="resume-avatar" id="resumeAvatar">R</div>
+      <h2 id="resumeWelcome">Welcome back</h2>
+
+      <div class="resume-details">
+        <div class="detail-row">
+          <span class="detail-label">Organization</span>
+          <span class="detail-value" id="resumeOrg"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Checked in</span>
+          <span class="detail-value" id="resumeTime"></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Role</span>
+          <span class="detail-value" id="resumeRole"></span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-block mb-16" id="resumeContinueBtn" onclick="resumeSession()">
+        Continue Session
+      </button>
+      <button class="link-btn" onclick="checkOutAndResign()">
+        Check out &amp; sign in as someone else
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 3: RESOURCE UPLOAD
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-resource-upload" class="screen">
+    <div class="upload-header">
+      <h2>Log Resources</h2>
+      <p>Choose how to input your resources</p>
+    </div>
+
+    <div class="input-mode-grid">
+      <button class="mode-btn" onclick="selectInputMode('photo')">
+        <span class="mode-icon">&#128247;</span>
+        <span class="mode-label">Photo of Equipment</span>
+      </button>
+      <button class="mode-btn" onclick="selectInputMode('document')">
+        <span class="mode-icon">&#128196;</span>
+        <span class="mode-label">Photo of Document</span>
+      </button>
+      <button class="mode-btn" onclick="selectInputMode('csv')">
+        <span class="mode-icon">&#128193;</span>
+        <span class="mode-label">Upload File</span>
+      </button>
+      <button class="mode-btn" onclick="selectInputMode('manual')">
+        <span class="mode-icon">&#128221;</span>
+        <span class="mode-label">Fill Out Form</span>
+      </button>
+    </div>
+
+    <div class="upload-workspace" id="uploadWorkspace">
+
+      <!-- PHOTO WORKSPACE -->
+      <div class="workspace-panel" id="ws-photo">
+        <input type="file" accept="image/*" capture="environment" id="photoInput" class="hidden" onchange="handlePhotoCapture(event, 'photo')">
+        <button class="btn btn-secondary btn-block mb-12" onclick="document.getElementById('photoInput').click()">
+          Take Photo or Choose Image
+        </button>
+        <div id="photoPreview"></div>
+      </div>
+
+      <!-- DOCUMENT WORKSPACE -->
+      <div class="workspace-panel" id="ws-document">
+        <input type="file" accept="image/*" capture="environment" id="docInput" class="hidden" onchange="handlePhotoCapture(event, 'document')">
+        <button class="btn btn-secondary btn-block mb-12" onclick="document.getElementById('docInput').click()">
+          Scan Document / Choose Image
+        </button>
+        <div id="docPreview"></div>
+      </div>
+
+      <!-- CSV WORKSPACE -->
+      <div class="workspace-panel" id="ws-csv">
+        <input type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.doc,.docx,.pdf,image/*" id="csvInput" class="hidden" onchange="handleFileUpload(event)">
+        <button class="btn btn-secondary btn-block mb-12" onclick="document.getElementById('csvInput').click()">
+          Choose CSV File
+        </button>
+        <div id="csvWorkArea"></div>
+      </div>
+
+      <!-- VOICE WORKSPACE -->
+      <div class="workspace-panel" id="ws-voice">
+        <div class="voice-panel">
+          <div class="voice-status" id="voiceStatus">
+            Press the button and start speaking
+          </div>
+          <div class="voice-transcript" id="voiceTranscript" contenteditable="false">
+            Your speech will appear here...
+          </div>
+          <button class="btn btn-primary mb-12" id="voiceRecordBtn" onclick="toggleVoiceRecording()">
+            Start Recording
+          </button>
+          <button class="btn btn-secondary btn-block hidden" id="voiceAnalyzeBtn" onclick="analyzeVoiceTranscript()">
+            Analyze Transcript
+          </button>
+        </div>
+      </div>
+
+      <!-- MANUAL WORKSPACE -->
+      <div class="workspace-panel" id="ws-manual">
+        <div class="form-group">
+          <label for="manualType">Resource Type</label>
+          <select id="manualType">
+            <option value="Vessel">Vessel</option>
+            <option value="Vehicle">Vehicle</option>
+            <option value="Equipment">Equipment</option>
+            <option value="Aircraft">Aircraft</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="manualIdentifier">Identifier / Name</label>
+          <input type="text" id="manualIdentifier" placeholder="e.g. Engine 42, Boat #3">
+        </div>
+        <div class="form-group">
+          <label for="manualCapability">Capability</label>
+          <input type="text" id="manualCapability" placeholder="e.g. 500 gal pump, boom deployment">
+        </div>
+        <div class="form-group">
+          <label for="manualCrew">Crew Count</label>
+          <input type="number" id="manualCrew" placeholder="0" min="0">
+        </div>
+        <div class="form-group">
+          <label for="manualStatus">Status</label>
+          <select id="manualStatus">
+            <option value="available">Available</option>
+            <option value="assigned">Assigned</option>
+            <option value="out_of_service">Out of Service</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="manualNotes">Notes</label>
+          <textarea id="manualNotes" placeholder="Any additional details..."></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="addManualResource()">
+          Add Resource
+        </button>
+      </div>
+
+      <!-- ANALYZING PANEL -->
+      <div class="workspace-panel" id="ws-analyzing">
+        <div class="analyzing-panel">
+          <div class="spinner"></div>
+          <p id="analyzingText">Analyzing...</p>
+        </div>
+      </div>
+
+      <!-- CONFIRMATION CARDS -->
+      <div class="workspace-panel" id="ws-confirm">
+        <h3 class="mb-12" id="confirmTitle">Review Resources</h3>
+        <div id="confirmCards"></div>
+        <div class="sticky-submit" id="confirmSubmitArea">
+          <button class="btn btn-success btn-block" onclick="submitAllResources()">
+            Submit All Resources
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center" style="padding: 8px 20px 24px;">
+      <button class="link-btn" onclick="skipResourceUpload()">Skip for now</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 4: MAIN APP
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-main" class="screen">
+    <div class="app-header">
+      <img src="assets/wri-logo.png" alt="WRI" style="height:28px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+      <span class="incident-name" id="headerIncident"></span>
+      <span class="user-name" id="headerUser"></span>
+      <button class="checkout-btn" onclick="showCheckoutOverlay()">Check Out</button>
+    </div>
+    <div class="welcome-banner" id="welcomeBanner"></div>
+
+    <div class="tab-content">
+      <!-- MAP TAB -->
+      <div class="tab-pane active" id="tab-map">
+        <div id="mapDiv"></div>
+      </div>
+
+      <!-- RECON TAB -->
+      <div class="tab-pane" id="tab-recon">
+        <div class="recon-form">
+          <div class="recon-map-preview">
+            <div id="reconMiniMap"></div>
+            <div class="gps-status" id="reconGpsStatus">Acquiring GPS...</div>
+            <div style="display:flex;gap:8px;margin-top:6px;">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="useDeviceLocation()" style="flex:1;">Use My Location</button>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="enableMapTap()" style="flex:1;">Tap Map to Place</button>
+            </div>
+            <div id="reconCoordDisplay" style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:center;"></div>
+          </div>
+
+          <form id="reconForm" autocomplete="off">
+            <div class="form-group">
+              <label for="reconType">Observation Type</label>
+              <select id="reconType" required>
+                <option value="">Select type...</option>
+                <option value="oil_spotted">Shoreline Oiling</option>
+                <option value="oil_spotted">Free Product</option>
+                <option value="injured_wildlife">Wildlife Impact</option>
+                <option value="boat_ramp">Access Point</option>
+                <option value="staging_area">Staging Area</option>
+                <option value="tactical_team">Tactical Position</option>
+                <option value="river_hazard">Hazard</option>
+                <option value="other_observation">Other</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Photo (optional)</label>
+              <input type="file" accept="image/*" capture="environment" id="reconPhoto" style="font-size:16px; padding: 10px 0; color: var(--text);">
+            </div>
+            <div class="form-group">
+              <label for="reconNotes">Notes</label>
+              <textarea id="reconNotes" placeholder="Describe what you observed..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="reconReporter">Reporter</label>
+              <input type="text" id="reconReporter" readonly>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block" id="reconSubmitBtn">
+              Submit Recon Point
+            </button>
+          </form>
+
+          <div id="reconSuccess" class="hidden" style="text-align:center; padding: 20px 0;">
+            <div style="font-size: 2.5rem; margin-bottom: 12px; color: var(--success);">&#10003;</div>
+            <h3>Recon Point Submitted</h3>
+            <p class="text-muted mt-12">Your observation has been recorded.</p>
+            <button class="btn btn-secondary mt-16" onclick="resetReconForm()">Submit Another</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SIT STAT TAB -->
+      <div class="tab-pane" id="tab-sitstat">
+        <div class="sitstat-container">
+          <div class="refresh-bar">
+            <span id="sitstatLastRefresh">Loading...</span>
+            <button class="btn-sm btn-secondary" onclick="loadSitStat()">Refresh</button>
+          </div>
+          <div id="sitstatContent">
+            <div class="empty-state">
+              <div class="spinner"></div>
+              <p class="mt-12">Loading situational data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESOURCES TAB -->
+      <div class="tab-pane" id="tab-resources">
+        <div class="resources-container">
+          <div class="section-header">
+            <h3>My Submissions</h3>
+            <button class="btn btn-sm btn-primary" onclick="openResourceUpload()">+ Add More</button>
+          </div>
+          <div id="myResourcesList">
+            <div class="empty-state">
+              <div class="empty-icon">&#128230;</div>
+              <p>No resources submitted yet</p>
+            </div>
+          </div>
+
+          <hr class="divider" style="margin: 24px 0;">
+
+          <div class="section-header">
+            <h3>All Active Resources</h3>
+          </div>
+          <div id="allResourcesList">
+            <div class="empty-state">
+              <div class="spinner"></div>
+              <p class="mt-12">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="active" onclick="switchTab('map')" id="tabBtn-map">
+        <span class="tab-icon">&#128506;</span>
+        Map
+      </button>
+      <button onclick="switchTab('recon')" id="tabBtn-recon">
+        <span class="tab-icon">&#128225;</span>
+        Recon
+      </button>
+      <button onclick="switchTab('sitstat')" id="tabBtn-sitstat">
+        <span class="tab-icon">&#128202;</span>
+        Sit Stat
+      </button>
+      <button onclick="switchTab('resources')" id="tabBtn-resources">
+        <span class="tab-icon">&#128230;</span>
+        Resources
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       SCREEN 5: THANK YOU
+       ═══════════════════════════════════════════════════════ -->
+  <div id="screen-thankyou" class="screen">
+    <div class="thankyou-container">
+      <div class="thankyou-check">&#10003;</div>
+      <h1>Thank You</h1>
+      <p class="text-muted mt-12">You have been checked out of the incident.</p>
+
+      <div class="thankyou-stats">
+        <div class="stat-row">
+          <span class="stat-label">Incident</span>
+          <span class="stat-value" id="tyIncident"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Checked In</span>
+          <span class="stat-value" id="tyCheckinTime"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Checked Out</span>
+          <span class="stat-value" id="tyCheckoutTime"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">Resources Submitted</span>
+          <span class="stat-value" id="tyResourceCount"></span>
+        </div>
+      </div>
+
+      <button class="btn btn-secondary btn-block mt-16" onclick="restartApp()">
+        Sign in as someone else
+      </button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════
+       CHECK-OUT OVERLAY
+       ═══════════════════════════════════════════════════════ -->
+  <div id="checkoutOverlay" class="overlay">
+    <div class="overlay-card">
+      <h2>Check Out?</h2>
+      <p>This will end your session. Any unsubmitted resources will be lost.</p>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="hideCheckoutOverlay()">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmCheckOut()">Check Out</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/screens.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/recon.js"></script>
+  <script src="js/resources.js"></script>
+  <script src="js/sitstat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
