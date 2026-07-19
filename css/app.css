@@ -2,9 +2,9 @@
       --bg: #000000;
       --panel: #3A3C3C;        /* headers, footers, cards/boxes (was blue) */
       --panel-light: #4a4d4d;  /* hover / submenu / table headers */
-      --accent: #e94560;
-      --accent-hover: #d63851;
-      --accent-glow: rgba(233, 69, 96, 0.3);
+      --accent: #EC2329;       /* Mayday Crimson (brand) */
+      --accent-hover: #d41f24;
+      --accent-glow: rgba(236, 35, 41, 0.3);
       --text: #f0f0f0;
       --text-muted: #b8bcbc;   /* neutral gray, lightened for contrast on #3A3C3C */
       --text-bright: #ffffff;
@@ -15,7 +15,7 @@
       --border: #55595a;       /* visible gray divider on gray panels */
       --input-bg: #2a2c2c;
       --input-border: #55595a;
-      --input-focus: #e94560;
+      --input-focus: #EC2329;
       --overlay: rgba(0, 0, 0, 0.85);
       --radius: 10px;
       --radius-sm: 6px;

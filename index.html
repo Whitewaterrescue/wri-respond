@@ -19,17 +19,17 @@
   <div id="screen-pin" class="screen">
     <div class="signin-container" style="max-width:340px">
       <div class="signin-logo">
-        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
         <div class="logo-sub">External Responder Gateway</div>
       </div>
       <div style="text-align:center;color:#9ca3af;font-size:13px;margin-bottom:20px;">Enter the access code provided by the incident team.</div>
       <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
-        <input type="tel" id="pin-1" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,2)" onfocus="this.select()">
-        <input type="tel" id="pin-2" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,3)" onfocus="this.select()">
-        <input type="tel" id="pin-3" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,4)" onfocus="this.select()">
-        <input type="tel" id="pin-4" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#111827;border:2px solid #374151;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,null)">
+        <input type="tel" id="pin-1" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,2)" onfocus="this.select()">
+        <input type="tel" id="pin-2" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,3)" onfocus="this.select()">
+        <input type="tel" id="pin-3" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,4)" onfocus="this.select()">
+        <input type="tel" id="pin-4" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,null)">
       </div>
-      <button onclick="submitPin()" style="width:100%;padding:14px;background:#cc0000;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;">Enter</button>
+      <button onclick="submitPin()" style="width:100%;padding:14px;background:#EC2329;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;">Enter</button>
       <div id="pin-error" style="color:#ef4444;text-align:center;font-size:13px;min-height:20px;margin-top:10px;"></div>
     </div>
   </div>
@@ -40,7 +40,7 @@
   <div id="screen-signin" class="screen">
     <div class="signin-container">
       <div class="signin-logo">
-        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+        <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
         <div class="logo-sub">External Responder Gateway</div>
       </div>
 
@@ -54,7 +54,7 @@
       </div>
 
       <form id="signinForm" autocomplete="off">
-        <div class="checkbox-group" style="background:rgba(233,69,96,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
+        <div class="checkbox-group" style="background:rgba(236,35,41,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
           <input type="checkbox" id="signinSafetyBriefing" required>
           <label for="signinSafetyBriefing" style="font-weight:600;">I have received or will receive a safety briefing before beginning work</label>
         </div>
@@ -285,7 +285,7 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="screen-main" class="screen">
     <div class="app-header">
-      <img src="assets/wri-logo.png" alt="WRI" style="height:28px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#cc0000>WRI</span>'">
+      <img src="assets/wri-logo.png" alt="WRI" style="height:28px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
       <span class="incident-name" id="headerIncident"></span>
       <span class="user-name" id="headerUser"></span>
       <button class="checkout-btn" onclick="showCheckoutOverlay()">Check Out</button>
