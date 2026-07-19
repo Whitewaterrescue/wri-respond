@@ -10,7 +10,7 @@ window.CONFIG = {
   // Per-incident public COP web map (activate_gateway_map.py). When set, the
   // map shows the incident's operational layers; when '', it falls back to
   // satellite + recon/resource views. The API's ?api=incident value wins if set.
-  GATEWAY_WEBMAP_ID: '7d2bd93c33d046d4ae426d11a1bb7a32',
+  GATEWAY_WEBMAP_ID: '4dca3c1597974f6b8a037109e0e5bb63',
 
   // ArcGIS JS SDK (AMD build, lazy-loaded on first Map-tab open)
   ARCGIS_JS:  'https://js.arcgis.com/4.29/',
