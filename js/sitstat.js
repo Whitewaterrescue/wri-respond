@@ -137,23 +137,24 @@
       }
 
       // ---------- Notifications ----------
+      // Full-width stacked cards (a 6-column table overflows on mobile).
       if (data.notifications && data.notifications.length) {
         html += '<div class="sitstat-section">';
         html += '<div class="sitstat-section-header"><h3>Notifications</h3></div>';
-        html += '<table class="sitstat-table"><thead><tr>';
-        html += '<th>DateTime</th><th>Organization</th><th>Person</th><th>Phone</th><th>Notified By</th><th>Notes</th>';
-        html += '</tr></thead><tbody>';
         data.notifications.forEach(function (n) {
-          html += '<tr>';
-          html += '<td>' + esc(n.datetime || '') + '</td>';
-          html += '<td>' + esc(n.organization || '') + '</td>';
-          html += '<td>' + esc(n.person || '') + '</td>';
-          html += '<td>' + esc(n.phone || '') + '</td>';
-          html += '<td>' + esc(n.notified_by || '') + '</td>';
-          html += '<td>' + esc(n.notes || '') + '</td>';
-          html += '</tr>';
+          var title = esc(n.organization || n.person || 'Notification');
+          html += '<div class="sitstat-card">';
+          html += '<div class="card-title">' + title +
+            (n.datetime ? ' <span style="font-weight:400;color:var(--text-muted);font-size:0.82em;">' + esc(n.datetime) + '</span>' : '') +
+            '</div>';
+          html += '<div class="card-body">';
+          if (n.person && n.organization) html += '<div>' + esc(n.person) + '</div>';
+          if (n.phone) html += '<div>' + esc(n.phone) + '</div>';
+          if (n.notified_by) html += '<div>Notified by ' + esc(n.notified_by) + '</div>';
+          if (n.notes) html += '<div>' + esc(n.notes) + '</div>';
+          html += '</div></div>';
         });
-        html += '</tbody></table></div>';
+        html += '</div>';
       }
 
       // ---------- Actions ----------
