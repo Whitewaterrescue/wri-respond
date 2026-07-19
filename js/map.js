@@ -149,12 +149,14 @@
         var inc = (window.APP && APP.incident) || {};
         var reconUrl = layerBaseUrl(inc, 'recon');
         var resourceUrl = layerBaseUrl(inc, 'resource');
-        var usingWebMap = !!inc.gateway_webmap_id;
+        // API value wins; fall back to the static config id.
+        var webmapId = inc.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '';
+        var usingWebMap = !!webmapId;
         var map;
 
         if (usingWebMap) {
           // Public webmap, loaded anonymously — no portal token.
-          map = new WebMap({ portalItem: { id: inc.gateway_webmap_id } });
+          map = new WebMap({ portalItem: { id: webmapId } });
         } else {
           map = new EsriMap({ basemap: 'satellite' });
 
