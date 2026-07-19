@@ -1,22 +1,22 @@
     :root {
       --bg: #000000;
-      --panel: #16213e;
-      --panel-light: #1c2a4a;
+      --panel: #3A3C3C;        /* headers, footers, cards/boxes (was blue) */
+      --panel-light: #4a4d4d;  /* hover / submenu / table headers */
       --accent: #e94560;
       --accent-hover: #d63851;
       --accent-glow: rgba(233, 69, 96, 0.3);
-      --text: #e0e0e0;
-      --text-muted: #8892a4;
+      --text: #f0f0f0;
+      --text-muted: #b8bcbc;   /* neutral gray, lightened for contrast on #3A3C3C */
       --text-bright: #ffffff;
       --success: #2ecc71;
       --warning: #f39c12;
       --danger: #e74c3c;
       --info: #3498db;
-      --border: #2a3a5c;
-      --input-bg: #0f1629;
-      --input-border: #2a3a5c;
+      --border: #55595a;       /* visible gray divider on gray panels */
+      --input-bg: #2a2c2c;
+      --input-border: #55595a;
       --input-focus: #e94560;
-      --overlay: rgba(10, 10, 20, 0.85);
+      --overlay: rgba(0, 0, 0, 0.85);
       --radius: 10px;
       --radius-sm: 6px;
       --shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
