@@ -1,5 +1,5 @@
     :root {
-      --bg: #1a1a2e;
+      --bg: #000000;
       --panel: #16213e;
       --panel-light: #1c2a4a;
       --accent: #e94560;
@@ -457,15 +457,17 @@
        SIGN-IN SCREEN
        ═══════════════════════════════════════════════════════ */
     #screen-signin {
-      justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, var(--bg) 0%, #0f1629 100%);
+      background: var(--bg);
     }
 
     .signin-container {
       width: 100%;
       max-width: 420px;
       padding: 30px 24px;
+      /* margin auto centers when short but lets the top scroll into view when
+         the form overflows (justify-content:center would clip the top). */
+      margin: auto 0;
     }
 
     .signin-logo {
@@ -523,10 +525,14 @@
     /* ═══════════════════════════════════════════════════════
        RESUME SCREEN
        ═══════════════════════════════════════════════════════ */
-    #screen-resume {
-      justify-content: center;
+    #screen-pin {
       align-items: center;
-      background: linear-gradient(135deg, var(--bg) 0%, #0f1629 100%);
+      background: var(--bg);
+    }
+
+    #screen-resume {
+      align-items: center;
+      background: var(--bg);
     }
 
     .resume-container {
@@ -534,6 +540,7 @@
       max-width: 420px;
       padding: 30px 24px;
       text-align: center;
+      margin: auto 0;
     }
 
     .resume-avatar {
@@ -1066,15 +1073,15 @@
        THANK-YOU SCREEN
        ═══════════════════════════════════════════════════════ */
     #screen-thankyou {
-      justify-content: center;
       align-items: center;
-      background: linear-gradient(135deg, var(--bg) 0%, #0f1629 100%);
+      background: var(--bg);
     }
 
     .thankyou-container {
       text-align: center;
       padding: 30px 24px;
       max-width: 420px;
+      margin: auto 0;
     }
 
     .thankyou-check {
