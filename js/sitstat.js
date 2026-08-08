@@ -9,7 +9,15 @@
   'use strict';
 
   var sitStatTimer = null;
-  var REFRESH_MS = 60 * 1000;
+  // 90s base + up to 30s per-client jitter: with a crowd on this tab, fixed
+  // 60s intervals synchronized into request spikes against a GAS backend
+  // that caps at ~30 simultaneous executions. Jitter spreads the polls out.
+  var REFRESH_MS = 90 * 1000;
+  var REFRESH_JITTER_MS = 30 * 1000;
+
+  function nextRefreshDelay() {
+    return REFRESH_MS + Math.floor(Math.random() * REFRESH_JITTER_MS);
+  }
 
   var OBJ_TEXTS = {
     '1': 'Ensure Safety of Response Personnel and Public',
@@ -412,19 +420,33 @@
   }
 
   /* ═══════════════════════════════════════════
-     AUTO REFRESH (60s while tab is active)
+     AUTO REFRESH (90s ± jitter while tab is active and page visible)
      ═══════════════════════════════════════════ */
+  function sitStatTabActive() {
+    return window.APP && APP.currentTab === 'sitstat' && APP.session;
+  }
+
   window.startSitStatAutoRefresh = function () {
     stopSitStatAutoRefresh();
-    sitStatTimer = setInterval(function () {
-      if (window.APP && APP.currentTab === 'sitstat' && APP.session) loadSitStat();
-    }, REFRESH_MS);
+    sitStatTimer = setTimeout(function tick() {
+      // Skip the poll when the tab/phone is backgrounded — a pocketed phone
+      // polling every 60s was steady load that scaled with crowd size.
+      var visible = (typeof document.hidden === 'undefined') || !document.hidden;
+      if (visible && sitStatTabActive()) loadSitStat();
+      sitStatTimer = setTimeout(tick, nextRefreshDelay());
+    }, nextRefreshDelay());
   };
 
   window.stopSitStatAutoRefresh = function () {
     if (sitStatTimer) {
-      clearInterval(sitStatTimer);
+      clearTimeout(sitStatTimer);
       sitStatTimer = null;
     }
   };
+
+  // Refresh once on regaining visibility so a returning user isn't stale
+  // (polls were skipped while hidden).
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden && sitStatTimer && sitStatTabActive()) loadSitStat();
+  });
 })();
