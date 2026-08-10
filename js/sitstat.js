@@ -433,18 +433,29 @@
     if (!roster || !roster.length) {
       return '<div class="empty-state"><p>No check-ins recorded</p></div>';
     }
-    var html = '<table class="sitstat-table"><thead><tr><th>Name</th><th>Org</th><th>Position</th><th>Check In</th><th>Check Out</th></tr></thead><tbody>';
+    // The API roster only contains people currently on site (check-out rows
+    // remove them server-side), so there is no Check Out column — Phone
+    // rides in its place as a tap-to-call link.
+    var html = '<table class="sitstat-table"><thead><tr><th>Name</th><th>Org</th><th>Position</th><th>Phone</th><th>Check In</th></tr></thead><tbody>';
     roster.forEach(function (r) {
       html += '<tr>';
       html += '<td>' + esc(r.name || '') + '</td>';
       html += '<td>' + esc(r.organization || '') + '</td>';
       html += '<td>' + esc(r.position || '') + '</td>';
+      html += '<td>' + phoneCell(r.phone) + '</td>';
       html += '<td>' + esc(r.check_in_time || '') + '</td>';
-      html += '<td>' + esc(r.check_out_time || '') + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
     return html;
+  }
+
+  function phoneCell(raw) {
+    var s = String(raw || '').trim();
+    if (!s) return '';
+    var digits = s.replace(/[^\d+]/g, '');
+    if (digits.replace(/\D/g, '').length < 7) return esc(s);
+    return '<a href="tel:' + escAttr(digits) + '" style="color:inherit;white-space:nowrap;">' + esc(s) + '</a>';
   }
 
   /* ═══════════════════════════════════════════
