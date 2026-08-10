@@ -61,6 +61,8 @@
     finance: ['fsc', 'deputy_fsc', 'cost', 'time', 'proc', 'comp']
   };
 
+  var SITSTAT_SNAP_KEY = 'wri_sitstat_snapshot';
+
   window.loadSitStat = function () {
     var contentEl = document.getElementById('sitstatContent');
     var refreshEl = document.getElementById('sitstatLastRefresh');
@@ -71,10 +73,36 @@
           contentEl.innerHTML = '<div class="empty-state"><p>No situational data available</p></div>';
           return;
         }
+        // Last-known-good snapshot for offline rendering. localStorage quota
+        // can overflow on huge attachment lists — snapshot is best-effort.
+        try {
+          localStorage.setItem(SITSTAT_SNAP_KEY, JSON.stringify({
+            data: data, fetched_at: new Date().toISOString()
+          }));
+        } catch (e) {}
         renderSitStat(data, contentEl);
         refreshEl.textContent = 'Updated ' + formatTime(new Date().toISOString());
       })
       .catch(function (err) {
+        // Offline / unreachable: render the stale snapshot with an explicit
+        // "as of" banner rather than an error (design rule: staleness must
+        // be visible, but stale beats blank in the field).
+        if (err && err.transient) {
+          var snap = null;
+          try { snap = JSON.parse(localStorage.getItem(SITSTAT_SNAP_KEY)); } catch (e) {}
+          if (snap && snap.data) {
+            renderSitStat(snap.data, contentEl);
+            contentEl.insertAdjacentHTML('afterbegin',
+              '<div style="background:#78350f;color:#fde68a;padding:8px 12px;border-radius:8px;' +
+              'margin-bottom:12px;font-size:13px;font-weight:600;text-align:center;">' +
+              'Offline — showing data as of ' + esc(formatTime(snap.fetched_at)) + '</div>');
+            refreshEl.textContent = 'Offline';
+            return;
+          }
+          contentEl.innerHTML = '<div class="empty-state"><p>No connection — situational data will load when signal returns.</p></div>';
+          refreshEl.textContent = 'Offline';
+          return;
+        }
         if (handleAuthError(err)) return;
         contentEl.innerHTML = '<div class="empty-state"><p>Error loading data: ' + esc(friendlyError(err)) + '</p></div>';
         refreshEl.textContent = 'Update failed';

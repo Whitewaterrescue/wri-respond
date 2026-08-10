@@ -16,6 +16,20 @@
     },
     clear: function () { localStorage.removeItem(KEY); },
 
+    // Offline check-in placeholder: the real checkin_id/session_token don't
+    // exist until the queued record drains. Outbox.reconcile() replaces this
+    // with the server result (Session.set) once delivered. `outbox_id` links
+    // the placeholder to its outbox record.
+    setPending: function (p) {
+      p.pending = true;
+      p.session_date = new Date().toISOString().slice(0, 10);
+      localStorage.setItem(KEY, JSON.stringify(p));
+    },
+    isPending: function () {
+      var s = this.get();
+      return !!(s && s.pending);
+    },
+
     // day-scoped validity: a session from a previous day is stale
     isToday: function () {
       var s = this.get();

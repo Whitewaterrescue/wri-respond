@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WRI Incident Response</title>
-  <link rel="icon" href="data:,">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#3A3C3C">
+  <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -22,7 +25,7 @@
         <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
         <div class="logo-sub">External Responder Gateway</div>
       </div>
-      <div style="text-align:center;color:#9ca3af;font-size:13px;margin-bottom:20px;">Enter the access code provided by the incident team.</div>
+      <div id="pinInstructions" style="text-align:center;color:#9ca3af;font-size:13px;margin-bottom:20px;">Enter the access code provided by the incident team.</div>
       <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
         <input type="tel" id="pin-1" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,2)" onfocus="this.select()">
         <input type="tel" id="pin-2" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,3)" onfocus="this.select()">
@@ -424,7 +427,7 @@
     <div class="thankyou-container">
       <div class="thankyou-check">&#10003;</div>
       <h1>Thank You</h1>
-      <p class="text-muted mt-12">You have been checked out of the incident.</p>
+      <p class="text-muted mt-12" id="tyMessage">You have been checked out of the incident.</p>
 
       <div class="thankyou-stats">
         <div class="stat-row">
@@ -469,11 +472,21 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/session.js"></script>
+  <script src="js/outbox.js"></script>
   <script src="js/screens.js"></script>
   <script src="js/map.js"></script>
   <script src="js/recon.js"></script>
   <script src="js/resources.js"></script>
   <script src="js/sitstat.js"></script>
   <script src="js/app.js"></script>
+  <script>
+    // Registered after load so the SW install never competes with the boot
+    // fetch. No install prompt anywhere — ambient browser UI only.
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('sw.js').catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>

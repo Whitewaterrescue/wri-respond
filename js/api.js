@@ -80,13 +80,14 @@
   }
 
   // Retry loop. optsFactory returns FRESH opts per attempt (POST body reused).
-  function request(url, optsFactory) {
+  function request(url, optsFactory, maxAttempts) {
+    var limit = maxAttempts || MAX_ATTEMPTS;
     var attempt = 0;
     function tryOnce() {
       attempt++;
       return doFetch(url, optsFactory()).then(unwrap, function (e) {
         var retryable = (e && e.transient) || (e && e.code && RETRYABLE_CODES[e.code]);
-        if (retryable && attempt < MAX_ATTEMPTS) {
+        if (retryable && attempt < limit) {
           return sleep(backoff(attempt)).then(tryOnce);
         }
         // Exhausted transports surface through the friendlyError() map.
@@ -109,9 +110,15 @@
     return request(url, function () { return { method: 'GET', redirect: 'follow' }; });
   };
 
-  window.apiPost = function (action, payload) {
+  // opts (optional): { idempotencyKey, maxAttempts }. The offline outbox
+  // mints the key at SUBMIT time and passes it here so the same key is
+  // shared by the direct attempt and any later queued drain — the server
+  // then replays instead of double-writing (durable across reloads, unlike
+  // a key minted inside this call).
+  window.apiPost = function (action, payload, opts) {
+    opts = opts || {};
     var s = window.Session && Session.get();
-    var env = { action: action, payload: payload || {}, idempotency_key: uuid() };
+    var env = { action: action, payload: payload || {}, idempotency_key: opts.idempotencyKey || uuid() };
     if (s && s.checkin_id) { env.checkin_id = s.checkin_id; env.session_token = s.session_token; }
     var body = JSON.stringify(env); // stable across retries -> server dedupes
     return request(CONFIG.API_URL, function () {
@@ -121,8 +128,11 @@
         body: body,
         redirect: 'follow'
       };
-    });
+    }, opts.maxAttempts);
   };
+
+  // Exposed for submit-time idempotency-key minting (screens.js outbox paths).
+  window.apiUuid = uuid;
 
   // Small helper for the PIN-gated public reads (users/usercerts)
   window.apiGetWithPin = function (mode, pin, params) {

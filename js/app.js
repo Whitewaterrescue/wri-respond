@@ -34,6 +34,15 @@
     var pane = document.getElementById('tab-' + name);
     if (pane) pane.classList.add('active');
 
+    // Pending (queued offline) check-in: session-gated tabs can't work until
+    // the check-in delivers — show a clear notice instead of auth errors.
+    var isPending = window.Session && Session.isPending && Session.isPending();
+    function pendingNotice(elId) {
+      var el = document.getElementById(elId);
+      if (el) el.innerHTML = '<div class="empty-state"><div class="empty-icon">&#9203;</div>' +
+        '<p>Available once your saved check-in has sent.</p></div>';
+    }
+
     if (name === 'map') {
       if (!APP.mapInited) {
         APP.mapInited = true;
@@ -48,11 +57,22 @@
       // point survives tab switches (legacy stomped it every time).
       if (!window.reconPoint) captureReconGPS();
     } else if (name === 'sitstat') {
-      loadSitStat();
-      startSitStatAutoRefresh();
+      if (isPending) {
+        pendingNotice('sitstatContent');
+        var refreshEl = document.getElementById('sitstatLastRefresh');
+        if (refreshEl) refreshEl.textContent = 'Waiting for check-in to send';
+      } else {
+        loadSitStat();
+        startSitStatAutoRefresh();
+      }
     } else if (name === 'resources') {
-      loadMyResources();
-      loadAllResources();
+      if (isPending) {
+        pendingNotice('myResourcesList');
+        pendingNotice('allResourcesList');
+      } else {
+        loadMyResources();
+        loadAllResources();
+      }
     }
 
     if (name !== 'sitstat') stopSitStatAutoRefresh();
@@ -97,6 +117,22 @@
 
   function route() {
     var stored = Session.get();
+
+    // ── Pending offline check-in (queued, not yet delivered) ──
+    if (stored && stored.pending) {
+      hideLoading();
+      if (!Session.isToday()) {
+        // Yesterday's queued check-in still delivers from the outbox (its
+        // record is untouched), but today needs a fresh check-in.
+        Session.clear();
+        showSigninExpired();
+        return;
+      }
+      APP.session = stored;
+      enterMainApp();
+      if (window.updateOutboxBanner) updateOutboxBanner();
+      return;
+    }
 
     // ── Returning user with a stored session ──
     if (stored && stored.checkin_id) {
@@ -151,21 +187,81 @@
     }
   }
 
+  var INC_SNAP_KEY = 'wri_incident_snapshot';
+
+  function bootWithIncident(incident, offlineAsOf) {
+    APP.incident = incident || {};
+    if (APP.incident.active === false) {
+      hideLoading();
+      renderIncidentClosed();
+      return;
+    }
+    APP.offline = !!offlineAsOf;
+    initSigninScreen(); // roles datalist, incident name, profile prefill
+    if (offlineAsOf) {
+      setTimeout(function () {
+        showToast('Offline — incident info as of ' + formatTime(offlineAsOf) + '.', true);
+      }, 400);
+    }
+    // Fold any drained outbox results into the session BEFORE routing, so a
+    // check-in delivered by Background Sync while the app was closed signs
+    // the user straight in.
+    if (window.Outbox) {
+      Outbox.reconcile().then(route, route);
+    } else {
+      route();
+    }
+  }
+
+  function onOutboxChanged() {
+    if (!window.Outbox) return;
+    Outbox.reconcile().then(function () {
+      if (window.updateOutboxBanner) updateOutboxBanner();
+      Outbox.pending().then(function (p) {
+        var needsPin = p.failed.some(function (r) { return r.needs_pin; });
+        if (needsPin && window.showDrainPinPrompt) showDrainPinPrompt();
+      });
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     showLoading('Loading incident...');
+
+    // Outbox event wiring: page-side drains emit a DOM event; SW-side
+    // (Background Sync) drains postMessage through the SW registration.
+    document.addEventListener('outbox:changed', onOutboxChanged);
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && e.data.type === 'outbox:changed') onOutboxChanged();
+      });
+    }
+
     apiGet('incident')
       .then(function (incident) {
-        APP.incident = incident || {};
-        if (APP.incident.active === false) {
-          hideLoading();
-          renderIncidentClosed();
-          return;
-        }
-        initSigninScreen(); // roles datalist, incident name, profile prefill
-        route();
+        try {
+          localStorage.setItem(INC_SNAP_KEY, JSON.stringify({
+            incident: incident, fetched_at: new Date().toISOString()
+          }));
+        } catch (e) {}
+        bootWithIncident(incident, null);
       })
       .catch(function (err) {
+        // Transient failure (offline) + a snapshot from a previous visit:
+        // boot against last-known incident info instead of a dead end. The
+        // precached shell got us this far; the snapshot gets us to sign-in.
+        var snap = null;
+        try { snap = JSON.parse(localStorage.getItem(INC_SNAP_KEY)); } catch (e) {}
+        if (err && err.transient && snap && snap.incident) {
+          bootWithIncident(snap.incident, snap.fetched_at || 'unknown');
+          return;
+        }
         renderBootError(err);
       });
+
+    // Drain anything left over from a previous visit (iOS delivery path:
+    // drain at every app start — there is no Background Sync there).
+    if (window.Outbox) {
+      setTimeout(function () { Outbox.drain({ source: 'boot' }); }, 1500);
+    }
   });
 })();

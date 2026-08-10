@@ -93,6 +93,12 @@
           btn.disabled = false;
           btn.textContent = 'Submit Recon Point';
           if (handleAuthError(err)) return;
+          if (err && err.transient) {
+            // Recon is NOT queued offline in this pilot — the entry stays on
+            // screen so nothing is lost; resubmit when connected.
+            showToast('No connection — recon needs signal. Your entry stays on this screen; try again when connected.', true);
+            return;
+          }
           showToast('Submit error: ' + friendlyError(err), true);
         });
     });

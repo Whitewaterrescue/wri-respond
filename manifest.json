@@ -1,0 +1,16 @@
+{
+  "name": "WRI Respond — Incident Gateway",
+  "short_name": "WRI Respond",
+  "description": "External responder check-in, recon, and situational awareness for WRI incidents.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#3A3C3C",
+  "theme_color": "#3A3C3C",
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

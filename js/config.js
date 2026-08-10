@@ -1,5 +1,7 @@
-/* WRI Respond — static config. All values here are public, non-secret. */
-window.CONFIG = {
+/* WRI Respond — static config. All values here are public, non-secret.
+ * Attached to `self` (not `window`) so sw.js can importScripts() this file —
+ * in a page self === window, so nothing changes for the app modules. */
+self.CONFIG = {
   // Dedicated GAS JSON API deployment (token-free, session-gated). See Api.gs.
   API_URL: 'https://script.google.com/macros/s/AKfycbx7p4-A8F6G_VedgHsw3RDJgwJK1GKVAFcvSah1JdjIdG5g7PAcvXhHRKHk_ULIhdL0KA/exec',
 

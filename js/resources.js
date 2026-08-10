@@ -594,6 +594,12 @@
       .catch(function (err) {
         hideLoading();
         if (handleAuthError(err)) return;
+        if (err && err.transient) {
+          // Resources are NOT queued offline in this pilot — cards stay on
+          // screen so nothing is lost; resubmit when connected.
+          showToast('No connection — resource upload needs signal. Your entries are still here; try again when connected.', true);
+          return;
+        }
         showToast('Submit error: ' + friendlyError(err), true);
       });
   };

@@ -81,6 +81,8 @@
       checked_out: 'You have been checked out. Please sign in again.',
       rate_limited: 'Too many requests — please wait a moment and try again.',
       validation: (err && err.message) || 'Some information is missing or invalid.',
+      incident_mismatch: 'The incident changed while this was waiting to send. Please check in to the current incident.',
+      blocked: 'Waiting on a saved check-in that could not be sent.',
       server_error: 'Server error — please try again.'
     };
     return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
@@ -89,6 +91,13 @@
   // Returns true when the error means the session is dead; clears it and
   // returns the user to sign-in.
   window.handleAuthError = function (err) {
+    // A pending (queued offline) check-in has no server session yet — an
+    // auth rejection here must NOT clear it, or the queued state's UI is
+    // lost and the user could double-queue a second check-in.
+    if (window.Session && Session.isPending && Session.isPending()) {
+      showToast('Your check-in is still waiting to send — this needs it delivered first.', true);
+      return true;
+    }
     var code = err && err.code;
     if (code === 'checked_out' || code === 'bad_token' || code === 'auth_required') {
       Session.clear();
@@ -152,6 +161,21 @@
     document.getElementById('pin-1').focus();
   }
 
+  // When true, the PIN screen is re-verifying a rotated code so queued
+  // outbox records can deliver (drain-time re-PIN). The queue is never
+  // dropped — a verified code is rewritten onto every needs_pin record.
+  var drainPinMode = false;
+  var PIN_DEFAULT_MSG = 'Enter the access code provided by the incident team.';
+
+  window.showDrainPinPrompt = function () {
+    if (drainPinMode) return;
+    drainPinMode = true;
+    var el = document.getElementById('pinInstructions');
+    if (el) el.textContent = 'The access code changed while your saved check-in was waiting to send. Enter the current code to deliver it.';
+    showScreen('pin');
+    clearPinBoxes();
+  };
+
   window.submitPin = function () {
     if (pinSubmitting) return;
     var pin = readPinBoxes();
@@ -171,6 +195,17 @@
         try { localStorage.setItem(PIN_STORE_KEY, pin); } catch (e) {}
         Session.pinOk.set(true);
         errEl.textContent = '';
+        if (drainPinMode) {
+          drainPinMode = false;
+          var el = document.getElementById('pinInstructions');
+          if (el) el.textContent = PIN_DEFAULT_MSG;
+          if (window.Outbox) {
+            Outbox.updatePin(pin).then(function () { Outbox.drain({ source: 'repin' }); });
+          }
+          var s = Session.get();
+          if (s && (s.checkin_id || s.pending)) { enterMainApp(); } else { showScreen('signin'); }
+          return;
+        }
         showScreen('signin');
       })
       .catch(function (err) {
@@ -399,8 +434,46 @@
   };
 
   /* ═══════════════════════════════════════════
-     SIGN-IN SUBMIT
+     SIGN-IN SUBMIT (online-first; queues offline)
      ═══════════════════════════════════════════ */
+  // Offline path: enqueue the check-in with a pending placeholder session.
+  // The outbox drain response back-fills the real session (Outbox.reconcile).
+  function queueCheckin(payload, idemKey, hasResources) {
+    var inc = (window.APP && APP.incident) || {};
+    return Outbox.enqueue({
+      id: idemKey,
+      action: 'checkin',
+      payload: payload,
+      session: null,
+      depends_on: null,
+      queued_at: new Date().toISOString(),
+      queued_incident_id: inc.incident_id || '',
+      queued_incident_name: inc.incident_name || ''
+    }).then(function () {
+      Session.setPending({
+        outbox_id: idemKey,
+        name: payload.name,
+        organization: payload.organization,
+        role: payload.role,
+        incident_id: inc.incident_id || '',
+        incident_name: inc.incident_name || '',
+        checkin_time: new Date().toISOString()
+      });
+      if (window.APP) APP.session = Session.get();
+      saveUserProfile(payload);
+      document.getElementById('signinExpiredMsg').classList.add('hidden');
+      document.getElementById('headerUser').textContent = payload.name;
+      enterMainApp();
+      if (window.updateOutboxBanner) updateOutboxBanner();
+      showToast('✓ Check-in saved on this device — it will send when signal returns.');
+      if (hasResources) {
+        setTimeout(function () {
+          showToast('Resource logging needs a connection — use Resources → + Add More once your check-in has sent.', true);
+        }, 4500);
+      }
+    });
+  }
+
   document.getElementById('signinForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var btn = document.getElementById('signinBtn');
@@ -421,10 +494,24 @@
       certifications: document.getElementById('gwCertToggle').checked ? gwGetCheckedCertCodes() : []
     };
 
-    apiPost('checkin', payload)
+    // Key minted at SUBMIT time and shared by the direct attempt AND any
+    // queued record — if the direct POST landed but its response was lost,
+    // the later drain replays server-side instead of double-writing.
+    var idemKey = apiUuid();
+
+    function resetBtn() { btn.disabled = false; btn.textContent = 'Check In'; }
+
+    // navigator.onLine === false is trustworthy (true is not) — skip the
+    // network entirely and queue.
+    if (navigator.onLine === false && window.Outbox) {
+      resetBtn();
+      queueCheckin(payload, idemKey, hasResources);
+      return;
+    }
+
+    apiPost('checkin', payload, { idempotencyKey: idemKey, maxAttempts: 2 })
       .then(function (result) {
-        btn.disabled = false;
-        btn.textContent = 'Check In';
+        resetBtn();
         if (!result || !result.checkin_id) {
           showToast('Check-in failed: unexpected server response.', true);
           return;
@@ -445,8 +532,12 @@
         }
       })
       .catch(function (err) {
-        btn.disabled = false;
-        btn.textContent = 'Check In';
+        resetBtn();
+        if (err && err.transient && window.Outbox) {
+          // Couldn't reach the server — save the check-in for delivery.
+          queueCheckin(payload, idemKey, hasResources);
+          return;
+        }
         if (err && err.code === 'pin_invalid') {
           // Stored PIN no longer valid (rotated) — send back through the gate.
           window._gwPin = '';
@@ -522,17 +613,59 @@
       });
   };
 
+  /* ═══════════════════════════════════════════
+     CHECK-OUT CORE (shared by overlay + resign paths)
+     ═══════════════════════════════════════════ */
+  // Snapshot the session creds INTO the outbox record before anything clears
+  // them — the old flow swallowed checkout failures ("thank you" either way)
+  // and the departure was simply lost. done(queued) runs after the direct
+  // send OR the enqueue; the caller clears the live session afterwards,
+  // which is safe because a queued record carries its own creds.
+  window.submitCheckout_ = function (done) {
+    var creds = Session.get() || {};
+    var inc = (window.APP && APP.incident) || {};
+    var idemKey = apiUuid();
+
+    function queueIt() {
+      if (!window.Outbox) { done(false); return; }
+      var pendingId = creds.pending ? creds.outbox_id : null;
+      Outbox.enqueue({
+        id: idemKey,
+        action: 'checkout',
+        payload: {},
+        session: (!pendingId && creds.checkin_id)
+          ? { checkin_id: creds.checkin_id, session_token: creds.session_token }
+          : null,
+        depends_on: pendingId || null,
+        queued_at: new Date().toISOString(),
+        queued_incident_id: creds.incident_id || inc.incident_id || ''
+      }).then(function () { done(true); }, function () { done(false); });
+    }
+
+    // Check-in itself still queued — the checkout can only ride behind it.
+    if (creds.pending) { queueIt(); return; }
+    if (!creds.checkin_id) { done(false); return; }
+    if (navigator.onLine === false && window.Outbox) { queueIt(); return; }
+
+    apiPost('checkout', {}, { idempotencyKey: idemKey, maxAttempts: 2 })
+      .then(function () { done(false); })
+      .catch(function (err) {
+        if (err && err.transient && window.Outbox) { queueIt(); return; }
+        // checked_out = goal state already holds; other terminal errors:
+        // clearing locally is the only sane move (matches legacy behavior).
+        done(false);
+      });
+  };
+
   window.checkOutAndResign = function () {
     showLoading('Checking out...');
-    apiPost('checkout', {})
-      .then(finishResign)
-      .catch(finishResign); // clear locally even if the server call fails
-    function finishResign() {
+    submitCheckout_(function (queued) {
       Session.clear();
       if (window.APP) APP.session = null;
       hideLoading();
+      if (queued) showToast('✓ Check-out saved — it will send when signal returns.');
       showScreen('signin');
-    }
+    });
   };
 
   /* ═══════════════════════════════════════════
@@ -570,20 +703,23 @@
   window.confirmCheckOut = function () {
     hideCheckoutOverlay();
     showLoading('Checking out...');
-    apiPost('checkout', {})
-      .then(function () { hideLoading(); showThankYou(); })
-      .catch(function () {
-        // Still show thank-you on failure so the user isn't trapped (legacy behavior)
-        hideLoading();
-        showThankYou();
-      });
+    submitCheckout_(function (queued) {
+      hideLoading();
+      showThankYou(queued);
+    });
   };
 
-  window.showThankYou = function () {
+  window.showThankYou = function (queued) {
     if (window.stopSitStatAutoRefresh) stopSitStatAutoRefresh();
     var s = Session.get() || {};
     var inc = (window.APP && APP.incident) || {};
-    document.getElementById('tyIncident').textContent = inc.incident_name || '';
+    var msg = document.getElementById('tyMessage');
+    if (msg) {
+      msg.textContent = queued
+        ? 'Your check-out is saved on this device and will send when signal returns.'
+        : 'You have been checked out of the incident.';
+    }
+    document.getElementById('tyIncident').textContent = inc.incident_name || s.incident_name || '';
     document.getElementById('tyCheckinTime').textContent = s.checkin_time ? formatTime(s.checkin_time) : '-';
     document.getElementById('tyCheckoutTime').textContent = formatTime(new Date().toISOString());
     document.getElementById('tyResourceCount').textContent = String((window.APP && APP.resourceCount) || 0);
@@ -595,6 +731,115 @@
   window.restartApp = function () {
     Session.clear();
     location.reload();
+  };
+
+  /* ═══════════════════════════════════════════
+     OUTBOX STATUS BANNER + DETAILS (offline queue surface)
+     ═══════════════════════════════════════════ */
+  // Persistent strip under the main-app header while anything is queued or
+  // failed. Amber = saved-and-waiting; red = needs attention (tap-through).
+  window.updateOutboxBanner = function () {
+    if (!window.Outbox) return;
+    Outbox.pending().then(function (p) {
+      var el = document.getElementById('outboxBanner');
+      var queued = p.queued.length;
+      var failed = p.failed.length;
+      var needsPin = p.failed.some(function (r) { return r.needs_pin; });
+      if (!queued && !failed) {
+        if (el) el.style.display = 'none';
+        return;
+      }
+      if (!el) {
+        el = document.createElement('div');
+        el.id = 'outboxBanner';
+        el.style.cssText = 'padding:9px 14px;font-size:13px;font-weight:600;text-align:center;cursor:default;';
+        var main = document.getElementById('screen-main');
+        var header = main && main.querySelector('.app-header');
+        if (!header) return;
+        header.parentNode.insertBefore(el, header.nextSibling);
+      }
+      if (needsPin) {
+        el.style.background = '#7f1d1d'; el.style.color = '#fff'; el.style.cursor = 'pointer';
+        el.textContent = 'Access code needed to send your saved check-in — tap here.';
+        el.onclick = function () { showDrainPinPrompt(); };
+      } else if (failed) {
+        el.style.background = '#7f1d1d'; el.style.color = '#fff'; el.style.cursor = 'pointer';
+        el.textContent = failed + ' saved record' + (failed === 1 ? '' : 's') + ' could not be sent — tap for details.';
+        el.onclick = function () { showOutboxDetails(); };
+      } else {
+        el.style.background = '#78350f'; el.style.color = '#fde68a'; el.style.cursor = 'default';
+        el.textContent = '✓ ' + queued + ' record' + (queued === 1 ? '' : 's') + ' saved on this device — will send when signal returns.';
+        el.onclick = null;
+      }
+      el.style.display = 'block';
+    });
+  };
+
+  window.showOutboxDetails = function () {
+    if (!window.Outbox) return;
+    Outbox.pending().then(function (p) {
+      var overlay = document.getElementById('outboxOverlay');
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'outboxOverlay';
+        overlay.className = 'overlay';
+        document.body.appendChild(overlay);
+      }
+      var rows = '';
+      p.failed.concat(p.queued).forEach(function (r) {
+        var label = r.action === 'checkin' ? 'Check-in' : 'Check-out';
+        var when = formatTime(r.queued_at);
+        var state = r.status === 'failed'
+          ? '<span style="color:#ef4444;">' + esc(friendlyError(r.last_error || {})) + '</span>'
+          : '<span style="color:#fde68a;">Waiting to send</span>';
+        rows += '<div style="border:1px solid var(--border,#55595a);border-radius:8px;padding:10px 12px;margin-bottom:10px;text-align:left;font-size:13px;">' +
+          '<div style="font-weight:700;margin-bottom:2px;">' + label + ' — saved ' + esc(when) + '</div>' +
+          '<div style="margin-bottom:6px;">' + state + '</div>';
+        if (r.status === 'failed') {
+          rows += '<div style="display:flex;gap:8px;">' +
+            (r.needs_pin
+              ? '<button class="btn btn-primary" style="flex:1;padding:8px;" onclick="hideOutboxDetails();showDrainPinPrompt();">Enter Code</button>'
+              : '<button class="btn btn-secondary" style="flex:1;padding:8px;" onclick="outboxRetry(\'' + escAttr(r.id) + '\')">Retry</button>') +
+            '<button class="btn btn-danger" style="flex:1;padding:8px;" onclick="outboxDiscard(\'' + escAttr(r.id) + '\')">Discard</button>' +
+            '</div>';
+        }
+        rows += '</div>';
+      });
+      if (!rows) rows = '<p class="text-muted">Nothing waiting to send.</p>';
+      overlay.innerHTML =
+        '<div class="overlay-card">' +
+        '<h2>Saved Records</h2>' +
+        '<div style="max-height:50vh;overflow-y:auto;margin:12px 0;">' + rows + '</div>' +
+        '<div class="btn-row"><button class="btn btn-secondary" onclick="hideOutboxDetails()">Close</button></div>' +
+        '</div>';
+      overlay.classList.add('active');
+    });
+  };
+
+  window.hideOutboxDetails = function () {
+    var overlay = document.getElementById('outboxOverlay');
+    if (overlay) overlay.classList.remove('active');
+  };
+
+  window.outboxRetry = function (id) {
+    hideOutboxDetails();
+    Outbox.retry(id).then(function () { updateOutboxBanner(); });
+  };
+
+  window.outboxDiscard = function (id) {
+    if (!confirm('Discard this saved record? It will never be sent.')) return;
+    Outbox.discard(id).then(function () {
+      hideOutboxDetails();
+      updateOutboxBanner();
+      // Discarding a pending check-in's record orphans the placeholder
+      // session — clear it so the user can check in again.
+      var s = Session.get();
+      if (s && s.pending && s.outbox_id === id) {
+        Session.clear();
+        if (window.APP) APP.session = null;
+        showScreen('signin');
+      }
+    });
   };
 
   // Attach autocomplete once the DOM is parsed (scripts sit at end of <body>).
