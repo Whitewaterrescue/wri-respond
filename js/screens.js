@@ -800,7 +800,7 @@
             (r.needs_pin
               ? '<button class="btn btn-primary" style="flex:1;padding:8px;" onclick="hideOutboxDetails();showDrainPinPrompt();">Enter Code</button>'
               : '<button class="btn btn-secondary" style="flex:1;padding:8px;" onclick="outboxRetry(\'' + escAttr(r.id) + '\')">Retry</button>') +
-            '<button class="btn btn-danger" style="flex:1;padding:8px;" onclick="outboxDiscard(\'' + escAttr(r.id) + '\')">Discard</button>' +
+            '<button class="btn btn-danger" style="flex:1;padding:8px;" onclick="outboxDiscard(\'' + escAttr(r.id) + '\', this)">Discard</button>' +
             '</div>';
         }
         rows += '</div>';
@@ -826,8 +826,19 @@
     Outbox.retry(id).then(function () { updateOutboxBanner(); });
   };
 
-  window.outboxDiscard = function (id) {
-    if (!confirm('Discard this saved record? It will never be sent.')) return;
+  // Two-tap inline confirm — native confirm() is suppressed inside embedded
+  // iframes (field-observed 2026-08-10 on the staff app; applies here too).
+  window.outboxDiscard = function (id, btn) {
+    if (btn && btn.getAttribute('data-armed') !== '1') {
+      btn.setAttribute('data-armed', '1');
+      var orig = btn.textContent;
+      btn.textContent = 'Tap again to discard';
+      setTimeout(function () {
+        btn.setAttribute('data-armed', '');
+        btn.textContent = orig;
+      }, 5000);
+      return;
+    }
     Outbox.discard(id).then(function () {
       hideOutboxDetails();
       updateOutboxBanner();
