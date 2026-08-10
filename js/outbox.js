@@ -433,10 +433,37 @@
   };
 
   /* ═══════════════════════════════════════════
-     PAGE-ONLY WIRING (iOS has no Background Sync — the 'online'
-     event and app-start drains are its delivery path)
+     PAGE-ONLY WIRING — delivery triggers.
+     iOS has no Background Sync, and a phone coming back from the
+     background misses the 'online' event entirely (page frozen when
+     the radio returned) — field-observed 2026-08-09 as "needs a
+     refresh to upload". So: drain on online, on returning to the
+     foreground (visibilitychange/focus/pageshow incl. bfcache
+     restores), and on a heartbeat while visible with a non-empty
+     queue. Drains are cheap no-ops when the queue is empty and
+     serialized by the web lock, so over-triggering is harmless.
      ═══════════════════════════════════════════ */
   if (isPage) {
-    self.addEventListener('online', function () { drain({ source: 'online' }); });
+    var lastTriggerDrain = 0;
+    function triggeredDrain(source) {
+      var now = Date.now();
+      if (now - lastTriggerDrain < 5000) return; // debounce event bursts
+      lastTriggerDrain = now;
+      pending().then(function (p) {
+        if (p.queued.length) drain({ source: source });
+      });
+    }
+
+    self.addEventListener('online', function () { triggeredDrain('online'); });
+    self.addEventListener('pageshow', function () { triggeredDrain('pageshow'); });
+    self.addEventListener('focus', function () { triggeredDrain('focus'); });
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'visible') triggeredDrain('visible');
+    });
+    // Foreground heartbeat: the OS may restore the page without firing any
+    // of the events above once the radio is already back.
+    setInterval(function () {
+      if (document.visibilityState === 'visible') triggeredDrain('heartbeat');
+    }, 30000);
   }
 })();
