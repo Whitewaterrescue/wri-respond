@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ArcGIS Sign-in</title>
+<style>
+body { font-family: Arial, sans-serif; background: #1c1e1e; color: #fff;
+  display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+</style>
+</head>
+<body>
+<p id="msg">Completing ArcGIS sign-in&hellip;</p>
+<script>
+// OAuth implicit-flow callback for the WRI Ops Dashboard ICS 201 Live Map.
+// AGOL redirects here with the token in the URL fragment; we hand it back to
+// the opener (the GAS app) via postMessage and close. The opener's origin is
+// an unpredictable *.googleusercontent.com sandbox, so targetOrigin must be
+// '*' — the receiving side validates event.origin against this Pages host.
+(function() {
+  var params = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+  var token = params.get('access_token');
+  var error = params.get('error') || params.get('error_description');
+  var payload;
+  if (token) {
+    payload = {
+      type: 'arcgis-auth',
+      token: token,
+      username: params.get('username') || '',
+      expires_in: Number(params.get('expires_in')) || 7200
+    };
+  } else {
+    payload = { type: 'arcgis-auth', error: error || 'No token returned' };
+  }
+  // Clear the token from the URL so it can't linger in history
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  if (window.opener) {
+    window.opener.postMessage(payload, '*');
+    document.getElementById('msg').textContent = token ? 'Signed in — you can close this window.' : ('Sign-in failed: ' + payload.error);
+    setTimeout(function() { window.close(); }, 400);
+  } else {
+    document.getElementById('msg').textContent = 'This page is only used as an ArcGIS sign-in callback.';
+  }
+})();
+</script>
+</body>
+</html>
