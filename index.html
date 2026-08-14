@@ -71,8 +71,11 @@
         </div>
         <div class="form-group">
           <label for="signinRole">ICS Position</label>
-          <input type="text" id="signinRole" list="roleList" placeholder="Start typing position..." required>
-          <datalist id="roleList"></datalist>
+          <select id="signinRole" required>
+            <option value="">Select position…</option>
+            <option value="__other__">Other…</option>
+          </select>
+          <input type="text" id="signinRoleOther" placeholder="Enter position" style="display:none;margin-top:8px;">
         </div>
         <div class="form-group">
           <label for="signinPhone">Phone</label>

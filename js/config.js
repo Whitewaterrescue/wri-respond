@@ -22,15 +22,27 @@ self.CONFIG = {
   DEFAULT_CENTER: [-113.994, 46.8721],
   DEFAULT_ZOOM: 7,
 
-  // ICS positions for the sign-in datalist (ported from wri-gateway Config.gs GW.ROLES)
+  // ICS positions for the sign-in dropdown — BAKED FALLBACK ONLY (used when
+  // both the live ?api=staffrefs fetch and its localStorage snapshot are
+  // unavailable, i.e. a first-ever offline open). The live list is the ICS
+  // Positions tab of the shared check-in workbook — same list as the
+  // check-in/out app. Keep this copy in sync when that tab changes.
   ROLES: [
-    'Incident Commander', 'Deputy Incident Commander', 'Safety Officer',
-    'Public Information Officer', 'Liaison Officer', 'Operations Section Chief',
-    'Planning Section Chief', 'Logistics Section Chief', 'Finance/Admin Section Chief',
-    'Division Supervisor', 'Group Supervisor', 'Strike Team Leader',
-    'Task Force Leader', 'Staging Area Manager', 'Field Observer',
-    'Boat Operator', 'Vessel Crew', 'Drone Pilot', 'Water Safety Technician',
-    'Wildlife Specialist', 'HazMat Technician', 'Equipment Operator',
-    'Volunteer', 'Contractor', 'Agency Representative', 'Other'
+    'Field Technician',
+    'Incident Commander (IC)', 'Deputy Incident Commander', 'Safety Officer (SOFR)',
+    'Asst Safety Officer 1 (ASOFR)', 'Asst Safety Officer 2 (ASOFR)', 'Asst Safety Officer 3 (ASOFR)',
+    'Public Information Officer (PIO)', 'Liaison Officer (LOFR)', 'Intelligence Officer (INTEL)',
+    'Operations Section Chief (OSC)', 'Deputy Operations Section Chief (DOSC)',
+    'Staging Area Manager (STAM)', 'Operations Branch 1 (OB1)', 'Operations Branch 2 (OB2)',
+    'Operations Branch 3 (OB3)', 'Division Supervisor A (DIVS-A)', 'Division Supervisor B (DIVS-B)',
+    'Air Operations Branch (AOBD)',
+    'Planning Section Chief (PSC)', 'Deputy Planning Section Chief (DPSC)',
+    'Situation Unit Leader (SITL)', 'Resource Unit Leader (RESL)',
+    'Documentation Unit Leader (DOCL)', 'Environmental Unit Leader (ENVL)',
+    'Logistics Section Chief (LSC)', 'Deputy Logistics Section Chief (DLSC)',
+    'Communications Unit Leader (COML)', 'Medical Unit Leader (MEDL)',
+    'Supply Unit Leader (SUPL)', 'Facilities Unit Leader (FACL)',
+    'Finance Section Chief (FSC)', 'Time Unit Leader (TIME)',
+    'Procurement Unit Leader (PROC)', 'Cost Unit Leader (COST)'
   ]
 };

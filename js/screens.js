@@ -222,14 +222,74 @@
   /* ═══════════════════════════════════════════
      SIGN-IN SCREEN SETUP
      ═══════════════════════════════════════════ */
+  /* Position dropdown — identical list to the check-in/out app (ICS Positions
+     tab via the open ?api=staffrefs read; only icsPositions is used). Chain:
+     live fetch → localStorage snapshot → CONFIG.ROLES baked copy. Selection
+     survives refills; values outside the list land on "Other…". */
+  var ROLES_SNAP_KEY = 'wri_respond_roles';
+
+  window.roleGet = function () {
+    var sel = document.getElementById('signinRole');
+    if (!sel) return '';
+    return sel.value === '__other__'
+      ? document.getElementById('signinRoleOther').value.trim()
+      : sel.value;
+  };
+  window.roleSet = function (value) {
+    var sel = document.getElementById('signinRole');
+    var other = document.getElementById('signinRoleOther');
+    if (!sel) return;
+    var v = String(value || '').trim();
+    var match = false;
+    for (var i = 0; i < sel.options.length; i++) {
+      if (sel.options[i].value === v) { match = true; break; }
+    }
+    if (v && !match) {
+      sel.value = '__other__'; other.value = v;
+      other.style.display = ''; other.required = true;
+    } else {
+      sel.value = v; other.value = '';
+      other.style.display = 'none'; other.required = false;
+    }
+  };
+  function fillRoleSelect(values) {
+    var sel = document.getElementById('signinRole');
+    if (!sel || !values || !values.length) return;
+    var current = roleGet();
+    sel.innerHTML = '';
+    function opt(v, label) {
+      var o = document.createElement('option');
+      o.value = v; o.textContent = label || v;
+      sel.appendChild(o);
+    }
+    opt('', 'Select position…');
+    values.forEach(function (v) { opt(v); });
+    opt('__other__', 'Other…');
+    roleSet(current);
+  }
+  document.getElementById('signinRole').addEventListener('change', function () {
+    var other = document.getElementById('signinRoleOther');
+    var isOther = this.value === '__other__';
+    other.style.display = isOther ? '' : 'none';
+    other.required = isOther;
+    if (isOther) other.focus();
+  });
+
   window.populateRoles = function () {
-    var datalist = document.getElementById('roleList');
-    if (!datalist || datalist.children.length) return;
-    (CONFIG.ROLES || []).forEach(function (r) {
-      var opt = document.createElement('option');
-      opt.value = r;
-      datalist.appendChild(opt);
-    });
+    var seed = CONFIG.ROLES || [];
+    try {
+      var snap = JSON.parse(localStorage.getItem(ROLES_SNAP_KEY));
+      if (snap && snap.length) seed = snap;
+    } catch (e) {}
+    fillRoleSelect(seed);
+    apiGet('staffrefs')
+      .then(function (data) {
+        var list = (data && data.icsPositions) || [];
+        if (!list.length) return;
+        try { localStorage.setItem(ROLES_SNAP_KEY, JSON.stringify(list)); } catch (e) {}
+        fillRoleSelect(list);
+      })
+      .catch(function () { /* seed already applied */ });
   };
 
   window.setIncidentName = function () {
@@ -244,7 +304,7 @@
       if (!profile) return;
       if (profile.name) document.getElementById('signinName').value = profile.name;
       if (profile.organization) document.getElementById('signinOrg').value = profile.organization;
-      if (profile.role) document.getElementById('signinRole').value = profile.role;
+      if (profile.role) roleSet(profile.role);
       if (profile.phone) document.getElementById('signinPhone').value = profile.phone;
       if (profile.email) document.getElementById('signinEmail').value = profile.email;
       // Programmatic field set doesn't fire blur — trigger cert prefill explicitly.
@@ -485,7 +545,7 @@
       pin: window._gwPin,
       name: document.getElementById('signinName').value.trim(),
       organization: document.getElementById('signinOrg').value.trim(),
-      role: document.getElementById('signinRole').value,
+      role: roleGet(),
       phone: document.getElementById('signinPhone').value.trim(),
       email: document.getElementById('signinEmail').value.trim(),
       checkin_location: document.getElementById('signinLocation').value.trim(),
