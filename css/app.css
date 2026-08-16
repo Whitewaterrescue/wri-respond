@@ -1009,26 +1009,32 @@
       flex-shrink: 0;
     }
 
-    /* ── WRRL company equipment checklist ── */
-    /* Full-page mode: while the checklist is active, hide the screen header
-       and the input-mode grid so the list gets the whole phone viewport.
-       The panel's own top bar carries the title + Back button. */
-    #screen-resource-upload.wrrl-full .upload-header,
-    #screen-resource-upload.wrrl-full .input-mode-grid {
+    /* ── Full-page workspaces ── */
+    /* While any input-mode workspace (or the review cards) is active, hide
+       the screen header and the mode grid so the workspace gets the whole
+       phone viewport. The shared top bar carries a Back button + title. */
+    #screen-resource-upload.mode-full .upload-header,
+    #screen-resource-upload.mode-full .input-mode-grid {
       display: none;
     }
 
-    .wrrl-topbar {
-      display: flex;
+    .ws-topbar {
+      display: none;
       align-items: center;
       gap: 12px;
       padding: 12px 0 8px;
     }
 
-    .wrrl-topbar h3 {
+    #screen-resource-upload.mode-full .ws-topbar {
+      display: flex;
+    }
+
+    .ws-topbar h3 {
       margin: 0;
       font-size: 1rem;
     }
+
+    /* ── WRRL company equipment checklist ── */
 
     .wrrl-org-results {
       max-height: 260px;

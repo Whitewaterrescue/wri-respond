@@ -190,6 +190,13 @@
 
     <div class="upload-workspace" id="uploadWorkspace">
 
+      <!-- Shared full-page top bar: shown while any mode workspace is active
+           (the screen header + mode grid are hidden — see .mode-full) -->
+      <div class="ws-topbar" id="wsTopbar">
+        <button type="button" class="link-btn" onclick="exitModeFull()">&larr; Back</button>
+        <h3 id="wsTopbarTitle"></h3>
+      </div>
+
       <!-- PHOTO WORKSPACE -->
       <div class="workspace-panel" id="ws-photo">
         <input type="file" accept="image/*" capture="environment" id="photoInput" class="hidden" onchange="handlePhotoCapture(event, 'photo')">
@@ -276,13 +283,8 @@
         </button>
       </div>
 
-      <!-- WRRL COMPANY CHECKLIST WORKSPACE (full-page: the mode grid and
-           header are hidden while active — see .wrrl-full) -->
+      <!-- WRRL COMPANY CHECKLIST WORKSPACE -->
       <div class="workspace-panel" id="ws-wrrl">
-        <div class="wrrl-topbar">
-          <button type="button" class="link-btn" onclick="exitWrrlMode()">&larr; Back</button>
-          <h3>Company Equipment List</h3>
-        </div>
         <div class="form-group">
           <label for="wrrlOrgSearch">Your Company / Organization</label>
           <input type="text" id="wrrlOrgSearch" placeholder="Type to search organizations..." autocomplete="off" oninput="renderWrrlOrgResults()">

@@ -52,27 +52,40 @@
     var ws = document.getElementById('ws-' + mode);
     if (ws) ws.classList.add('active');
 
-    // WRRL checklist takes the whole viewport on phones — hide the header +
-    // mode grid while it's active (its own top bar has a Back button).
-    setWrrlFull(mode === 'wrrl');
+    // Every workspace takes the whole viewport on phones — hide the header +
+    // mode grid while one is active (the shared top bar has a Back button).
+    setModeFull(true, MODE_TITLES[mode] || 'Log Resources');
     if (mode === 'wrrl') initWrrlMode();
   };
 
-  function setWrrlFull(on) {
+  var MODE_TITLES = {
+    photo: 'Photo of Equipment',
+    document: 'Photo of Document',
+    csv: 'Upload File',
+    manual: 'Fill Out Form',
+    voice: 'Voice Entry',
+    wrrl: 'Company Equipment List'
+  };
+
+  function setModeFull(on, title) {
     var screen = document.getElementById('screen-resource-upload');
-    if (screen) screen.classList.toggle('wrrl-full', !!on);
+    if (screen) screen.classList.toggle('mode-full', !!on);
+    var titleEl = document.getElementById('wsTopbarTitle');
+    if (titleEl) titleEl.textContent = on ? (title || '') : '';
   }
 
-  // Back button on the checklist's top bar: restore the mode grid.
-  window.exitWrrlMode = function () {
-    setWrrlFull(false);
-    document.getElementById('ws-wrrl').classList.remove('active');
+  // Back button on the shared top bar: restore the mode grid. Pending review
+  // cards are kept — adding another resource re-opens the review view.
+  window.exitModeFull = function () {
+    setModeFull(false);
+    var panels = document.querySelectorAll('.workspace-panel');
+    for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
     var buttons = document.querySelectorAll('.mode-btn');
-    for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('selected');
+    for (var j = 0; j < buttons.length; j++) buttons[j].classList.remove('selected');
   };
 
   function resetUploadWorkspace() {
-    setWrrlFull(false);
+    setModeFull(false);
     var panels = document.querySelectorAll('.workspace-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
     var buttons = document.querySelectorAll('.mode-btn');
@@ -659,7 +672,7 @@
      CONFIRMATION CARDS
      ═══════════════════════════════════════════ */
   function showConfirmationCards() {
-    setWrrlFull(false);
+    setModeFull(true, ''); // full-page; the panel's own "Review N" heading is the title
     var panels = document.querySelectorAll('.workspace-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
     document.getElementById('ws-confirm').classList.add('active');
@@ -780,7 +793,7 @@
   window.removeResource = function (idx) {
     pendingResources.splice(idx, 1);
     if (pendingResources.length === 0) {
-      document.getElementById('ws-confirm').classList.remove('active');
+      exitModeFull(); // nothing left to review — back to the mode grid
       document.getElementById('confirmTitle').textContent = 'Review Resources';
     } else {
       document.getElementById('confirmTitle').textContent = 'Review ' + pendingResources.length + ' Resource(s)';
