@@ -41,6 +41,25 @@
     return arcgisPromise;
   }
 
+  // Warm the SDK during the PIN/sign-in dwell (called from app.js boot).
+  // Pulls init.js + the exact module set initMainMap needs; instantiates
+  // nothing, so no DOM is touched. initMainMap later joins the same memoized
+  // promise. Failures stay silent — loadArcGIS resets arcgisPromise on error,
+  // so the real map init retries from scratch.
+  window.warmArcGIS = function () {
+    loadArcGIS().then(function (require) {
+      require([
+        'esri/Map',
+        'esri/views/MapView',
+        'esri/layers/FeatureLayer',
+        'esri/widgets/Locate',
+        'esri/widgets/LayerList',
+        'esri/widgets/Search',
+        'esri/WebMap'
+      ], function () {});
+    }).catch(function () {});
+  };
+
   function sqlEscape(v) {
     return String(v == null ? '' : v).replace(/'/g, "''");
   }
@@ -203,16 +222,17 @@
 
         mapView.when(function () {
           mapView.ui.add(new Locate({ view: mapView }), 'top-right');
-          mapView.ui.add(new Search({ view: mapView, popupEnabled: false }), 'top-right');
 
-          // LayerList inside a small toggle panel (ported from legacy UX)
-          var layerList = new LayerList({
-            view: mapView,
-            listItemCreatedFunction: function (event) {
-              event.item.panel = { content: 'legend', open: false };
-            },
-            container: document.createElement('div')
-          });
+          // Deferred: constructing Search immediately fetches world-geocoder
+          // metadata, competing with the first tile/feature window on slow links.
+          setTimeout(function () {
+            if (mapView) mapView.ui.add(new Search({ view: mapView, popupEnabled: false }), 'top-right');
+          }, 4000);
+
+          // LayerList inside a small toggle panel (ported from legacy UX).
+          // Constructed on first open: its per-layer legend queries otherwise
+          // also land inside the initial tile/feature window.
+          var layerList = null;
           var layerToggle = document.createElement('div');
           layerToggle.style.cssText = 'position:relative;';
           var layerBtn = document.createElement('button');
@@ -224,8 +244,17 @@
           layerPanel.style.cssText = 'display:none;position:absolute;top:40px;left:0;background:var(--panel);' +
             'border:1px solid var(--border);border-radius:6px;padding:8px;min-width:220px;max-height:300px;' +
             'overflow-y:auto;z-index:100;';
-          layerPanel.appendChild(layerList.container);
           layerBtn.onclick = function () {
+            if (!layerList) {
+              layerList = new LayerList({
+                view: mapView,
+                listItemCreatedFunction: function (event) {
+                  event.item.panel = { content: 'legend', open: false };
+                },
+                container: document.createElement('div')
+              });
+              layerPanel.appendChild(layerList.container);
+            }
             layerPanel.style.display = layerPanel.style.display === 'none' ? 'block' : 'none';
           };
           layerToggle.appendChild(layerBtn);

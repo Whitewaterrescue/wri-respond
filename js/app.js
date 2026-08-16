@@ -142,8 +142,12 @@
         showSigninExpired();
         return;
       }
-      // Revalidate with the server before dropping into the main app
-      apiGet('session')
+      // Revalidate with the server before dropping into the main app.
+      // Prefer the pre-fired boot-time call (overlaps the incident fetch);
+      // fall back to a fresh call if none was fired.
+      var sessionCall = earlySession || apiGet('session');
+      earlySession = null;
+      sessionCall
         .then(function (result) {
           hideLoading();
           if (!result || !result.valid) {
@@ -189,6 +193,10 @@
 
   var INC_SNAP_KEY = 'wri_incident_snapshot';
 
+  // Pre-fired session revalidation (see DOMContentLoaded): lets the session
+  // GAS leg overlap the incident GAS leg instead of running after it.
+  var earlySession = null;
+
   function bootWithIncident(incident, offlineAsOf) {
     APP.incident = incident || {};
     if (APP.incident.active === false) {
@@ -198,6 +206,10 @@
     }
     APP.offline = !!offlineAsOf;
     initSigninScreen(); // roles datalist, incident name, profile prefill
+    // Warm the ArcGIS SDK while the user is on the PIN/sign-in screens — the
+    // map is the default tab, so these bytes are needed within a minute.
+    // Skipped on offline boots (nothing to download).
+    if (!offlineAsOf && window.warmArcGIS) setTimeout(window.warmArcGIS, 0);
     if (offlineAsOf) {
       setTimeout(function () {
         showToast('Offline — incident info as of ' + formatTime(offlineAsOf) + '.', true);
@@ -236,6 +248,34 @@
       });
     }
 
+    // Pre-fire the session revalidation for a returning same-day user so it
+    // overlaps the incident fetch below — route() consumes this promise
+    // instead of issuing a second, serialized GAS round trip. Safe to fire
+    // before Outbox.reconcile(): the guard (real checkin_id, not pending,
+    // same-day) means reconcile can't change the credentials it was sent with.
+    var s0 = window.Session && Session.get();
+    if (s0 && s0.checkin_id && !s0.pending && Session.isToday()) {
+      earlySession = apiGet('session');
+      earlySession.catch(function () {}); // consumed in route(); silence unhandled-rejection noise
+    }
+
+    // Stale-while-revalidate: a recent incident snapshot boots the app
+    // immediately (no waiting out a GAS cold start); the live fetch below
+    // then corrects name/webmap/closed-state in the background. A snapshot
+    // that says "closed" never fast-boots — that verdict must come live.
+    var booted = false;
+    function bootOnce(incident, offlineAsOf) {
+      if (booted) return;
+      booted = true;
+      bootWithIncident(incident, offlineAsOf);
+    }
+    var snap = null;
+    try { snap = JSON.parse(localStorage.getItem(INC_SNAP_KEY)); } catch (e) {}
+    var snapAgeMs = (snap && snap.fetched_at) ? (Date.now() - new Date(snap.fetched_at).getTime()) : Infinity;
+    if (snap && snap.incident && snap.incident.active !== false && snapAgeMs < 12 * 3600 * 1000) {
+      bootOnce(snap.incident, null);
+    }
+
     apiGet('incident')
       .then(function (incident) {
         try {
@@ -243,16 +283,28 @@
             incident: incident, fetched_at: new Date().toISOString()
           }));
         } catch (e) {}
-        bootWithIncident(incident, null);
+        if (!booted) { bootOnce(incident, null); return; }
+        // Background refresh after a snapshot boot: swap in the live incident
+        // without re-running the full boot (which would stomp a form the user
+        // is already typing into).
+        APP.incident = incident || {};
+        if (APP.incident.active === false) { renderIncidentClosed(); return; }
+        if (window.setIncidentName) setIncidentName();
       })
       .catch(function (err) {
+        if (booted) {
+          // Snapshot boot is already on screen; the refresh just failed.
+          if (err && err.transient) {
+            APP.offline = true;
+            showToast('Offline — incident info as of ' + formatTime(snap.fetched_at || 'unknown') + '.', true);
+          }
+          return;
+        }
         // Transient failure (offline) + a snapshot from a previous visit:
         // boot against last-known incident info instead of a dead end. The
         // precached shell got us this far; the snapshot gets us to sign-in.
-        var snap = null;
-        try { snap = JSON.parse(localStorage.getItem(INC_SNAP_KEY)); } catch (e) {}
         if (err && err.transient && snap && snap.incident) {
-          bootWithIncident(snap.incident, snap.fetched_at || 'unknown');
+          bootOnce(snap.incident, snap.fetched_at || 'unknown');
           return;
         }
         renderBootError(err);
