@@ -51,6 +51,8 @@
     for (var k = 0; k < panels.length; k++) panels[k].classList.remove('active');
     var ws = document.getElementById('ws-' + mode);
     if (ws) ws.classList.add('active');
+
+    if (mode === 'wrrl') initWrrlMode();
   };
 
   function resetUploadWorkspace() {
@@ -64,6 +66,14 @@
     document.getElementById('confirmCards').innerHTML = '';
     document.getElementById('voiceTranscript').textContent = 'Your speech will appear here...';
     voiceTranscriptText = '';
+    // WRRL checklist: drop selections but keep the loaded org/catalog so
+    // "+ Add More" doesn't force a re-pick (initWrrlMode refreshes dup badges).
+    wrrlSelected = {};
+    wrrlBoomFt = {};
+    var wrrlBody = document.getElementById('wrrlListBody');
+    if (wrrlBody) wrrlBody.innerHTML = '';
+    var wrrlStatus = document.getElementById('wrrlStatus');
+    if (wrrlStatus) wrrlStatus.textContent = '';
     var success = document.getElementById('ws-success');
     if (success) success.parentNode.removeChild(success);
   }
@@ -417,6 +427,218 @@
   };
 
   /* ═══════════════════════════════════════════
+     WRRL COMPANY EQUIPMENT CHECKLIST
+     Search your org, tick the catalog items you brought; selections feed the
+     same confirmation-card flow as every other mode, carrying wrrl_id /
+     org_code so the server stamps the catalog identity onto the record.
+     ═══════════════════════════════════════════ */
+  var wrrlOrgs = null;      // [{code, count}] — fetched once per app load
+  var wrrlOrg = '';         // chosen org code
+  var wrrlItems = [];       // catalog items for the chosen org
+  var wrrlExisting = {};    // WRRL_ID -> true (already submitted this incident)
+  var wrrlSelected = {};    // WRRL_ID -> true
+  var wrrlBoomFt = {};      // WRRL_ID -> user-entered boom feet
+  var wrrlWired = false;
+
+  function initWrrlMode() {
+    if (!wrrlWired) {
+      wrrlWired = true;
+      var body = document.getElementById('wrrlListBody');
+      body.addEventListener('change', onWrrlListChange);
+      body.addEventListener('input', onWrrlBoomInput);
+      document.getElementById('wrrlOrgResults').addEventListener('click', function (e) {
+        var btn = e.target.closest ? e.target.closest('.wrrl-org-row') : null;
+        if (btn && btn.getAttribute('data-org')) loadWrrlOrg(btn.getAttribute('data-org'));
+      });
+    }
+    // Prefill with the organization typed at check-in
+    var search = document.getElementById('wrrlOrgSearch');
+    if (!search.value) {
+      var s = window.Session && Session.get();
+      if (s && s.organization) search.value = s.organization;
+    }
+    if (wrrlOrg && wrrlItems.length) {
+      // Returning to the mode: refresh the list (dup badges may have changed
+      // after a submit) without making the user re-pick their org.
+      loadWrrlOrg(wrrlOrg);
+      return;
+    }
+    if (wrrlOrgs) { renderWrrlOrgResults(); return; }
+    var statusEl = document.getElementById('wrrlStatus');
+    statusEl.textContent = 'Loading organizations...';
+    apiGet('wrrlorgs')
+      .then(function (data) {
+        wrrlOrgs = (data && data.orgs) || [];
+        statusEl.textContent = '';
+        renderWrrlOrgResults();
+      })
+      .catch(function (err) {
+        if (handleAuthError(err)) return;
+        statusEl.textContent = 'Could not load organizations: ' + friendlyError(err);
+      });
+  }
+  window.initWrrlMode = initWrrlMode;
+
+  window.renderWrrlOrgResults = function () {
+    var box = document.getElementById('wrrlOrgResults');
+    if (!wrrlOrgs) { box.innerHTML = ''; return; }
+    var q = (document.getElementById('wrrlOrgSearch').value || '').trim().toUpperCase();
+    var matches = q ? wrrlOrgs.filter(function (o) { return o.code.toUpperCase().indexOf(q) > -1; }) : wrrlOrgs;
+    // Free-text org names ("County Fire Dept") won't match a code — show the
+    // full code list rather than a dead end.
+    if (!matches.length) matches = wrrlOrgs;
+    var html = '';
+    matches.forEach(function (o) {
+      html += '<button type="button" class="wrrl-org-row" data-org="' + escAttr(o.code) + '">' +
+        '<span>' + esc(o.code) + '</span><span class="wrrl-org-count">' + o.count + ' items</span></button>';
+    });
+    box.innerHTML = html;
+  };
+
+  window.loadWrrlOrg = function (code) {
+    wrrlOrg = code;
+    wrrlSelected = {};
+    wrrlBoomFt = {};
+    var statusEl = document.getElementById('wrrlStatus');
+    statusEl.textContent = 'Loading ' + code + ' equipment...';
+    document.getElementById('wrrlOrgResults').innerHTML = '';
+    apiGet('wrrlitems', { org: code })
+      .then(function (data) {
+        wrrlItems = (data && data.items) || [];
+        wrrlExisting = {};
+        ((data && data.existing_ids) || []).forEach(function (id) { wrrlExisting[id] = true; });
+        if (!wrrlItems.length) {
+          statusEl.textContent = 'No equipment found for ' + code + '.';
+          document.getElementById('wrrlListArea').classList.add('hidden');
+          return;
+        }
+        statusEl.textContent = '';
+        document.getElementById('wrrlOrgChosen').innerHTML =
+          '<strong>' + esc(code) + '</strong> &mdash; ' + wrrlItems.length + ' catalog items ' +
+          '<button type="button" class="link-btn" onclick="changeWrrlOrg()">change</button>';
+        document.getElementById('wrrlItemSearch').value = '';
+        document.getElementById('wrrlListArea').classList.remove('hidden');
+        renderWrrlList();
+      })
+      .catch(function (err) {
+        if (handleAuthError(err)) return;
+        statusEl.textContent = 'Could not load equipment: ' + friendlyError(err);
+      });
+  };
+
+  window.changeWrrlOrg = function () {
+    document.getElementById('wrrlListArea').classList.add('hidden');
+    renderWrrlOrgResults();
+  };
+
+  window.renderWrrlList = function () {
+    var body = document.getElementById('wrrlListBody');
+    var q = (document.getElementById('wrrlItemSearch').value || '').trim().toLowerCase();
+    var shown = wrrlItems.filter(function (it) {
+      if (!q) return true;
+      return (it.id + ' ' + it.kind + ' ' + it.type + ' ' + it.ident + ' ' + it.spec)
+        .toLowerCase().indexOf(q) > -1;
+    });
+    var groups = {};
+    shown.forEach(function (it) {
+      var k = it.kind || 'Other';
+      (groups[k] = groups[k] || []).push(it);
+    });
+    var html = '';
+    Object.keys(groups).sort().forEach(function (k) {
+      html += '<div class="group-header">' + esc(k) + ' (' + groups[k].length + ')</div>';
+      groups[k].forEach(function (it) {
+        var isBoom = (it.kind || '').toLowerCase().indexOf('boom') > -1;
+        var cbId = 'wrrlcb-' + it.id;
+        html += '<div class="wrrl-row' + (wrrlExisting[it.id] ? ' dup' : '') + '">';
+        html += '<input type="checkbox" id="' + escAttr(cbId) + '" data-wrrl="' + escAttr(it.id) + '"' +
+          (wrrlSelected[it.id] ? ' checked' : '') + '>';
+        html += '<label for="' + escAttr(cbId) + '">';
+        html += '<span class="wrrl-name">' + esc(it.ident || it.type || it.id) + '</span>';
+        html += '<span class="wrrl-detail">' + esc(it.type || '') + (it.spec ? ' — ' + esc(it.spec) : '') + '</span>';
+        if (wrrlExisting[it.id]) html += '<span class="wrrl-dup-badge">&#9888; already added</span>';
+        html += '</label>';
+        if (isBoom && wrrlSelected[it.id]) {
+          var ft = wrrlBoomFt[it.id] != null ? wrrlBoomFt[it.id]
+            : (String(it.boom || '').replace(/\D/g, '') || '');
+          html += '<input type="number" class="wrrl-boom" data-boom="' + escAttr(it.id) + '" value="' +
+            escAttr(ft) + '" min="1" max="99999" placeholder="ft" title="Boom feet">';
+        }
+        html += '</div>';
+      });
+    });
+    body.innerHTML = html || '<div class="empty-state"><p>No matches</p></div>';
+    updateWrrlAddBtn();
+  };
+
+  function onWrrlListChange(e) {
+    var id = e.target.getAttribute && e.target.getAttribute('data-wrrl');
+    if (!id) return;
+    if (e.target.checked) wrrlSelected[id] = true;
+    else delete wrrlSelected[id];
+    renderWrrlList(); // re-render so boom inputs appear/disappear
+  }
+
+  function onWrrlBoomInput(e) {
+    var id = e.target.getAttribute && e.target.getAttribute('data-boom');
+    if (!id) return;
+    wrrlBoomFt[id] = String(e.target.value || '').replace(/\D/g, '');
+  }
+
+  function updateWrrlAddBtn() {
+    var n = Object.keys(wrrlSelected).length;
+    var btn = document.getElementById('wrrlAddBtn');
+    btn.disabled = n === 0;
+    btn.textContent = n ? 'Add ' + n + ' Selected Item(s)' : 'Select items to add';
+  }
+
+  function mapWrrlKind(kind) {
+    var k = String(kind || '').toLowerCase();
+    if (k === 'vessel') return 'Vessel';
+    if (k === 'vehicle') return 'Vehicle';
+    if (k === 'aircraft') return 'Aircraft';
+    return k ? 'Equipment' : 'Other';
+  }
+
+  window.addWrrlSelected = function () {
+    var byId = {};
+    wrrlItems.forEach(function (it) { byId[it.id] = it; });
+    var ids = Object.keys(wrrlSelected);
+    if (!ids.length) return;
+    ids.forEach(function (id) {
+      var it = byId[id];
+      if (!it) return;
+      var isBoom = (it.kind || '').toLowerCase().indexOf('boom') > -1;
+      var boomFt = isBoom
+        ? (wrrlBoomFt[id] || String(it.boom || '').replace(/\D/g, ''))
+        : String(it.boom || '');
+      var capParts = [];
+      if (it.spec) capParts.push(it.spec);
+      if (boomFt) capParts.push('Boom: ' + boomFt + ' ft');
+      if (it.rec) capParts.push('Recovery: ' + it.rec);
+      if (it.stor) capParts.push('Storage: ' + it.stor);
+      pendingResources.push({
+        resource_type: mapWrrlKind(it.kind),
+        identifier: it.ident || ((it.type || it.kind || 'WRRL') + ' ' + it.id),
+        capability: capParts.join(' | '),
+        crew_count: String(it.ppl || '').replace(/\D/g, ''),
+        status: 'available',
+        notes: 'WRRL ' + it.id + (it.type ? ' (' + it.type + ')' : ''),
+        wrrl_id: it.id,
+        wrrl_group: it.grp || '',
+        org_code: wrrlOrg,
+        wrrl_type: it.type || '',
+        wrrl_recovery: it.rec || '',
+        wrrl_storage: it.stor || '',
+        wrrl_boom: boomFt || ''
+      });
+    });
+    wrrlSelected = {};
+    wrrlBoomFt = {};
+    showConfirmationCards();
+  };
+
+  /* ═══════════════════════════════════════════
      CONFIRMATION CARDS
      ═══════════════════════════════════════════ */
   function showConfirmationCards() {
@@ -573,7 +795,17 @@
         crew_count: r.crew_count || '',
         status: r.status || 'available',
         location_name: r.location_name || '',
-        notes: r.notes || ''
+        notes: r.notes || '',
+        // WRRL catalog identity (present only on checklist-mode cards; the
+        // server stamps these onto the Reviewed Resources columns and falls
+        // back to the legacy 'EXT' org when absent)
+        wrrl_id: r.wrrl_id || '',
+        wrrl_group: r.wrrl_group || '',
+        org_code: r.org_code || '',
+        wrrl_type: r.wrrl_type || '',
+        wrrl_recovery: r.wrrl_recovery || '',
+        wrrl_storage: r.wrrl_storage || '',
+        wrrl_boom: r.wrrl_boom || ''
       };
     });
 

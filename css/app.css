@@ -1009,6 +1009,105 @@
       flex-shrink: 0;
     }
 
+    /* ── WRRL company equipment checklist ── */
+    .wrrl-org-results {
+      max-height: 260px;
+      overflow-y: auto;
+      margin-top: 6px;
+    }
+
+    .wrrl-org-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 10px 14px;
+      margin-bottom: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      text-align: left;
+    }
+
+    .wrrl-org-row:hover { border-color: var(--accent); }
+
+    .wrrl-org-row .wrrl-org-count {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .wrrl-org-chosen {
+      padding: 8px 0 12px;
+      font-size: 0.9rem;
+      color: var(--text-bright);
+    }
+
+    .wrrl-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      margin-bottom: 6px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+    }
+
+    .wrrl-row.dup { border-color: var(--warning, #f59e0b); }
+
+    .wrrl-row input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      accent-color: var(--accent);
+    }
+
+    .wrrl-row label {
+      flex: 1;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .wrrl-row .wrrl-name {
+      display: block;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: var(--text-bright);
+    }
+
+    .wrrl-row .wrrl-detail {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .wrrl-dup-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      color: var(--warning, #f59e0b);
+      margin-top: 2px;
+    }
+
+    .wrrl-row .wrrl-boom {
+      width: 72px;
+      flex-shrink: 0;
+      padding: 8px;
+      font-size: 0.85rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+    }
+
     .location-group {
       margin-bottom: 16px;
     }

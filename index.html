@@ -9,6 +9,17 @@
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
   <link rel="stylesheet" href="css/app.css">
+  <!-- Warm the connections the boot path needs: the GAS API call 302s through
+       googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
+       (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
+       Distant origins (used only after the map opens) get dns-prefetch;
+       a full preconnect would idle out before they're touched. -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://js.arcgis.com">
+  <link rel="preconnect" href="https://js.arcgis.com" crossorigin>
+  <link rel="dns-prefetch" href="https://services6.arcgis.com">
+  <link rel="dns-prefetch" href="https://www.arcgis.com">
 </head>
 <body>
   <div id="loadingOverlay" class="loading-overlay">
@@ -171,6 +182,10 @@
         <span class="mode-icon">&#128221;</span>
         <span class="mode-label">Fill Out Form</span>
       </button>
+      <button class="mode-btn mode-btn-full" onclick="selectInputMode('wrrl')">
+        <span class="mode-icon">&#9745;</span>
+        <span class="mode-label">Company Equipment List (WRRL)</span>
+      </button>
     </div>
 
     <div class="upload-workspace" id="uploadWorkspace">
@@ -259,6 +274,26 @@
         <button class="btn btn-primary btn-block" onclick="addManualResource()">
           Add Resource
         </button>
+      </div>
+
+      <!-- WRRL COMPANY CHECKLIST WORKSPACE -->
+      <div class="workspace-panel" id="ws-wrrl">
+        <div class="form-group">
+          <label for="wrrlOrgSearch">Your Company / Organization</label>
+          <input type="text" id="wrrlOrgSearch" placeholder="Type to search organizations..." autocomplete="off" oninput="renderWrrlOrgResults()">
+          <div id="wrrlOrgResults" class="wrrl-org-results"></div>
+        </div>
+        <div id="wrrlListArea" class="hidden">
+          <div class="wrrl-org-chosen" id="wrrlOrgChosen"></div>
+          <div class="form-group" style="margin-bottom:8px;">
+            <input type="text" id="wrrlItemSearch" placeholder="Search equipment..." autocomplete="off" oninput="renderWrrlList()">
+          </div>
+          <div id="wrrlListBody"></div>
+          <div class="sticky-submit">
+            <button class="btn btn-primary btn-block" id="wrrlAddBtn" onclick="addWrrlSelected()" disabled>Select items to add</button>
+          </div>
+        </div>
+        <div id="wrrlStatus" style="font-size:13px;color:var(--text-muted);padding:8px 0;"></div>
       </div>
 
       <!-- ANALYZING PANEL -->
