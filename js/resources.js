@@ -52,10 +52,27 @@
     var ws = document.getElementById('ws-' + mode);
     if (ws) ws.classList.add('active');
 
+    // WRRL checklist takes the whole viewport on phones — hide the header +
+    // mode grid while it's active (its own top bar has a Back button).
+    setWrrlFull(mode === 'wrrl');
     if (mode === 'wrrl') initWrrlMode();
   };
 
+  function setWrrlFull(on) {
+    var screen = document.getElementById('screen-resource-upload');
+    if (screen) screen.classList.toggle('wrrl-full', !!on);
+  }
+
+  // Back button on the checklist's top bar: restore the mode grid.
+  window.exitWrrlMode = function () {
+    setWrrlFull(false);
+    document.getElementById('ws-wrrl').classList.remove('active');
+    var buttons = document.querySelectorAll('.mode-btn');
+    for (var i = 0; i < buttons.length; i++) buttons[i].classList.remove('selected');
+  };
+
   function resetUploadWorkspace() {
+    setWrrlFull(false);
     var panels = document.querySelectorAll('.workspace-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
     var buttons = document.querySelectorAll('.mode-btn');
@@ -642,6 +659,7 @@
      CONFIRMATION CARDS
      ═══════════════════════════════════════════ */
   function showConfirmationCards() {
+    setWrrlFull(false);
     var panels = document.querySelectorAll('.workspace-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
     document.getElementById('ws-confirm').classList.add('active');

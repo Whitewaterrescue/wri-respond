@@ -276,8 +276,13 @@
         </button>
       </div>
 
-      <!-- WRRL COMPANY CHECKLIST WORKSPACE -->
+      <!-- WRRL COMPANY CHECKLIST WORKSPACE (full-page: the mode grid and
+           header are hidden while active — see .wrrl-full) -->
       <div class="workspace-panel" id="ws-wrrl">
+        <div class="wrrl-topbar">
+          <button type="button" class="link-btn" onclick="exitWrrlMode()">&larr; Back</button>
+          <h3>Company Equipment List</h3>
+        </div>
         <div class="form-group">
           <label for="wrrlOrgSearch">Your Company / Organization</label>
           <input type="text" id="wrrlOrgSearch" placeholder="Type to search organizations..." autocomplete="off" oninput="renderWrrlOrgResults()">

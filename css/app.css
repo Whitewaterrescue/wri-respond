@@ -1010,6 +1010,26 @@
     }
 
     /* ── WRRL company equipment checklist ── */
+    /* Full-page mode: while the checklist is active, hide the screen header
+       and the input-mode grid so the list gets the whole phone viewport.
+       The panel's own top bar carries the title + Back button. */
+    #screen-resource-upload.wrrl-full .upload-header,
+    #screen-resource-upload.wrrl-full .input-mode-grid {
+      display: none;
+    }
+
+    .wrrl-topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0 8px;
+    }
+
+    .wrrl-topbar h3 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
     .wrrl-org-results {
       max-height: 260px;
       overflow-y: auto;
