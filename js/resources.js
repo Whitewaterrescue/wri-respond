@@ -907,7 +907,7 @@
           html += '<div class="res-name"><span class="badge badge-' + getTypeBadgeClass(r.resource_type) +
             '" style="margin-right:6px;">' + esc(r.resource_type || 'other') + '</span>' + esc(r.identifier || 'Unknown') + '</div>';
           html += '<div class="res-detail">' + esc(r.capability || '') + (r.location_name ? ' | ' + esc(r.location_name) : '') + '</div>';
-          if (r.review_status === 'rejected' && r.notes) {
+          if (String(r.review_status || '').toLowerCase() === 'rejected' && r.notes) {
             html += '<div class="res-detail" style="color:var(--danger);">Reason: ' + esc(r.notes) + '</div>';
           }
           html += '</div>';

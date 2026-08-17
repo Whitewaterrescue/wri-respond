@@ -20,6 +20,16 @@
   }
 
   var OBJ_TEXTS = {
+    // NWACP Section 4500 hierarchy (nw codes from the Ops Dashboard ICS 201)
+    'nw1': 'Ensure the safety of citizens and response personnel',
+    'nw2': 'Control the source of the spill',
+    'nw3': 'Maximize protection of environmentally sensitive areas',
+    'nw4': 'Contain and recover spilled product',
+    'nw5': 'Recover and rehabilitate injured wildlife',
+    'nw6': 'Manage a coordinated response effort',
+    'nw7': 'Remove oil from impacted areas',
+    'nw8': 'Minimize damage to economically sensitive areas',
+    'nw9': 'Keep the public and stakeholders informed',
     '1': 'Ensure Safety of Response Personnel and Public',
     '2': 'Control the Source of the Spilled Material',
     '3': 'Stabilize Incident and Minimize Impact to Critical Infrastructure',
