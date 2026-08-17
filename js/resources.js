@@ -847,9 +847,10 @@
         hideLoading();
         if (result && result.success) {
           var count = result.count || cleaned.length;
+          var allWrrl = cleaned.length > 0 && cleaned.every(function (r) { return r.wrrl_id; });
           pendingResources = [];
           if (window.APP) APP.resourceCount = (APP.resourceCount || 0) + count;
-          showResourceSuccessMessage(count);
+          showResourceSuccessMessage(count, allWrrl);
         } else {
           showToast('Submit failed: unexpected server response.', true);
         }
@@ -867,7 +868,7 @@
       });
   };
 
-  function showResourceSuccessMessage(count) {
+  function showResourceSuccessMessage(count, allWrrl) {
     var container = document.getElementById('uploadWorkspace');
     var panels = document.querySelectorAll('.workspace-panel');
     for (var i = 0; i < panels.length; i++) panels[i].classList.remove('active');
@@ -883,7 +884,9 @@
     panel.innerHTML =
       '<div style="font-size:2.5rem;color:var(--success);margin-bottom:12px;">&#10003;</div>' +
       '<h3>' + count + ' Resource(s) Submitted</h3>' +
-      '<p class="text-muted mt-12">Resources are pending review by incident management.</p>' +
+      '<p class="text-muted mt-12">' + (allWrrl
+        ? 'Resources added to the incident.'
+        : 'Resources are pending review by incident management.') + '</p>' +
       '<button class="btn btn-primary mt-20" onclick="enterMainApp()">Continue to App</button>';
     panel.classList.add('active');
   }
