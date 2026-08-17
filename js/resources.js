@@ -466,8 +466,8 @@
   var wrrlOrg = '';         // chosen org code
   var wrrlItems = [];       // catalog items for the chosen org
   var wrrlExisting = {};    // WRRL_ID -> true (already submitted this incident)
-  var wrrlSelected = {};    // WRRL_ID -> true
-  var wrrlBoomFt = {};      // WRRL_ID -> user-entered boom feet
+  var wrrlSelected = {};    // catalog position (item._i) -> true
+  var wrrlBoomFt = {};      // catalog position (item._i) -> user-entered boom feet
   var wrrlWired = false;
 
   function initWrrlMode() {
@@ -535,6 +535,11 @@
     apiGet('wrrlitems', { org: code })
       .then(function (data) {
         wrrlItems = (data && data.items) || [];
+        // Selection state is keyed by catalog POSITION, not WRRL_ID — the
+        // catalog contains duplicate WRRL_IDs (e.g. WRI 61155 covers both a
+        // Mavic 3 and a Mini 4), and id-keyed checkboxes made twins toggle
+        // together.
+        wrrlItems.forEach(function (it, i) { it._i = i; });
         wrrlExisting = {};
         ((data && data.existing_ids) || []).forEach(function (id) { wrrlExisting[id] = true; });
         if (!wrrlItems.length) {
@@ -579,19 +584,20 @@
       html += '<div class="group-header">' + esc(k) + ' (' + groups[k].length + ')</div>';
       groups[k].forEach(function (it) {
         var isBoom = (it.kind || '').toLowerCase().indexOf('boom') > -1;
-        var cbId = 'wrrlcb-' + it.id;
+        var key = String(it._i); // position key — WRRL_IDs are NOT unique
+        var cbId = 'wrrlcb-' + key;
         html += '<div class="wrrl-row' + (wrrlExisting[it.id] ? ' dup' : '') + '">';
-        html += '<input type="checkbox" id="' + escAttr(cbId) + '" data-wrrl="' + escAttr(it.id) + '"' +
-          (wrrlSelected[it.id] ? ' checked' : '') + '>';
-        html += '<label for="' + escAttr(cbId) + '">';
+        html += '<input type="checkbox" id="' + cbId + '" data-wrrl="' + key + '"' +
+          (wrrlSelected[key] ? ' checked' : '') + '>';
+        html += '<label for="' + cbId + '">';
         html += '<span class="wrrl-name">' + esc(it.ident || it.type || it.id) + '</span>';
         html += '<span class="wrrl-detail">' + esc(it.type || '') + (it.spec ? ' — ' + esc(it.spec) : '') + '</span>';
         if (wrrlExisting[it.id]) html += '<span class="wrrl-dup-badge">&#9888; already added</span>';
         html += '</label>';
-        if (isBoom && wrrlSelected[it.id]) {
-          var ft = wrrlBoomFt[it.id] != null ? wrrlBoomFt[it.id]
+        if (isBoom && wrrlSelected[key]) {
+          var ft = wrrlBoomFt[key] != null ? wrrlBoomFt[key]
             : (String(it.boom || '').replace(/\D/g, '') || '');
-          html += '<input type="number" class="wrrl-boom" data-boom="' + escAttr(it.id) + '" value="' +
+          html += '<input type="number" class="wrrl-boom" data-boom="' + key + '" value="' +
             escAttr(ft) + '" min="1" max="99999" placeholder="ft" title="Boom feet">';
         }
         html += '</div>';
@@ -631,16 +637,14 @@
   }
 
   window.addWrrlSelected = function () {
-    var byId = {};
-    wrrlItems.forEach(function (it) { byId[it.id] = it; });
-    var ids = Object.keys(wrrlSelected);
-    if (!ids.length) return;
-    ids.forEach(function (id) {
-      var it = byId[id];
+    var keys = Object.keys(wrrlSelected);
+    if (!keys.length) return;
+    keys.forEach(function (key) {
+      var it = wrrlItems[parseInt(key, 10)];
       if (!it) return;
       var isBoom = (it.kind || '').toLowerCase().indexOf('boom') > -1;
       var boomFt = isBoom
-        ? (wrrlBoomFt[id] || String(it.boom || '').replace(/\D/g, ''))
+        ? (wrrlBoomFt[key] || String(it.boom || '').replace(/\D/g, ''))
         : String(it.boom || '');
       var capParts = [];
       if (it.spec) capParts.push(it.spec);
