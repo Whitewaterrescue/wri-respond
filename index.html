@@ -81,41 +81,8 @@
           <input type="text" id="signinOrg" placeholder="e.g. County Fire Dept" required>
         </div>
         <div class="form-group">
-          <label for="signinRole">ICS Position</label>
-          <select id="signinRole" required>
-            <option value="">Select position…</option>
-            <option value="__other__">Other…</option>
-          </select>
-          <input type="text" id="signinRoleOther" placeholder="Enter position" style="display:none;margin-top:8px;">
-        </div>
-        <div class="form-group">
-          <label for="signinPhone">Phone</label>
-          <input type="tel" id="signinPhone" placeholder="(555) 555-1234" required>
-        </div>
-        <div class="form-group">
-          <label for="signinEmail">Email</label>
-          <input type="email" id="signinEmail" placeholder="you@example.com" required>
-        </div>
-        <div class="form-group">
-          <label for="signinLocation">Check-In Location</label>
-          <input type="text" id="signinLocation" placeholder="e.g., ICP, Staging Area A" required>
-        </div>
-        <div class="form-group">
-          <label for="signinWorkDesc">Work Description</label>
-          <textarea id="signinWorkDesc" placeholder="Brief description of your role/tasks"></textarea>
-        </div>
-        <div class="checkbox-group">
-          <input type="checkbox" id="signinHasResources">
-          <label for="signinHasResources">I have resources to log</label>
-        </div>
-        <div class="checkbox-group" id="gwCertToggleWrap">
-          <input type="checkbox" id="gwCertToggle">
-          <label for="gwCertToggle">Include my certifications with this check-in</label>
-        </div>
-        <div id="gwCertSection" style="display:none;border:1px solid var(--border);border-radius:6px;background:var(--panel);padding:12px;margin-bottom:12px">
-          <div id="gwCertPrefilledMsg" style="display:none;font-size:12px;color:#0a8043;margin-bottom:8px;font-style:italic"></div>
-          <div id="gwCertLoading" style="font-size:12px;color:#666;font-style:italic;padding:6px 0">Loading certifications…</div>
-          <div id="gwCertList"></div>
+          <label for="signinContact">Contact <span style="font-weight:400;color:var(--text-muted);">(phone or email)</span></label>
+          <input type="text" id="signinContact" placeholder="(555) 555-1234 or you@example.com" autocomplete="off">
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="signinBtn">
           Check In
@@ -346,55 +313,48 @@
         <div id="mapDiv"></div>
       </div>
 
-      <!-- RECON TAB -->
+      <!-- ADD TO COP TAB (recon submission) -->
       <div class="tab-pane" id="tab-recon">
         <div class="recon-form">
+          <div class="recon-step-label">1 &middot; Location <span>&mdash; tap the map to place the point anywhere</span></div>
           <div class="recon-map-preview">
             <div id="reconMiniMap"></div>
             <div class="gps-status" id="reconGpsStatus">Acquiring GPS...</div>
-            <div style="display:flex;gap:8px;margin-top:6px;">
-              <button type="button" class="btn btn-secondary btn-sm" onclick="useDeviceLocation()" style="flex:1;">Use My Location</button>
-              <button type="button" class="btn btn-secondary btn-sm" onclick="enableMapTap()" style="flex:1;">Tap Map to Place</button>
-            </div>
-            <div id="reconCoordDisplay" style="font-size:11px;color:var(--text-muted);margin-top:4px;text-align:center;"></div>
           </div>
+          <div style="display:flex;gap:8px;margin:8px 0 4px;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="useDeviceLocation()" style="flex:1;">&#128205; Use My Location</button>
+          </div>
+          <div id="reconCoordDisplay" style="font-size:11px;color:var(--text-muted);margin:2px 0 12px;text-align:center;">Tap the map to report a spot away from you.</div>
 
           <form id="reconForm" autocomplete="off">
-            <div class="form-group">
-              <label for="reconType">Observation Type</label>
-              <select id="reconType" required>
-                <option value="">Select type...</option>
-                <option value="oil_spotted">Shoreline Oiling</option>
-                <option value="oil_spotted">Free Product</option>
-                <option value="injured_wildlife">Wildlife Impact</option>
-                <option value="boat_ramp">Access Point</option>
-                <option value="staging_area">Staging Area</option>
-                <option value="tactical_team">Tactical Position</option>
-                <option value="river_hazard">Hazard</option>
-                <option value="other_observation">Other</option>
-              </select>
+            <div class="recon-step-label">2 &middot; Observation Type</div>
+            <div class="cat-tabs" id="reconCatTabs"></div>
+            <div class="obs-grid" id="reconObsGrid"></div>
+            <div class="form-group hidden" id="reconSubtypeSection">
+              <label>Hazard Type</label>
+              <div class="chip-row" id="reconSubtypeChips"></div>
             </div>
+
+            <div class="recon-step-label">3 &middot; Details</div>
             <div class="form-group">
-              <label>Photo (optional)</label>
-              <input type="file" accept="image/*" capture="environment" id="reconPhoto" style="font-size:16px; padding: 10px 0; color: var(--text);">
-            </div>
-            <div class="form-group">
-              <label for="reconNotes">Notes</label>
+              <label for="reconNotes">Description</label>
               <textarea id="reconNotes" placeholder="Describe what you observed..."></textarea>
             </div>
             <div class="form-group">
-              <label for="reconReporter">Reporter</label>
-              <input type="text" id="reconReporter" readonly>
+              <label>Photos (optional, up to 3)</label>
+              <input type="file" accept="image/*" capture="environment" multiple id="reconPhoto" style="font-size:16px; padding: 10px 0; color: var(--text);">
+              <div id="reconPhotoPreview" class="recon-photo-row"></div>
             </div>
             <button type="submit" class="btn btn-primary btn-block" id="reconSubmitBtn">
-              Submit Recon Point
+              Add to COP
             </button>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center;">Submitted under your check-in name and shown on the incident map.</div>
           </form>
 
           <div id="reconSuccess" class="hidden" style="text-align:center; padding: 20px 0;">
             <div style="font-size: 2.5rem; margin-bottom: 12px; color: var(--success);">&#10003;</div>
-            <h3>Recon Point Submitted</h3>
-            <p class="text-muted mt-12">Your observation has been recorded.</p>
+            <h3>Added to the COP</h3>
+            <p class="text-muted mt-12">Your observation has been recorded on the incident map.</p>
             <button class="btn btn-secondary mt-16" onclick="resetReconForm()">Submit Another</button>
           </div>
         </div>
@@ -494,8 +454,8 @@
         Map
       </button>
       <button onclick="switchTab('recon')" id="tabBtn-recon">
-        <span class="tab-icon">&#128225;</span>
-        Recon
+        <span class="tab-icon">&#128205;</span>
+        Add to COP
       </button>
       <button onclick="switchTab('sitstat')" id="tabBtn-sitstat">
         <span class="tab-icon">&#128202;</span>
@@ -558,6 +518,7 @@
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
   <script src="js/config.js"></script>
+  <script src="js/obstypes.js"></script>
   <script src="js/api.js"></script>
   <script src="js/session.js"></script>
   <script src="js/outbox.js"></script>

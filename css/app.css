@@ -818,20 +818,167 @@
     }
 
     /* ═══════════════════════════════════════════════════════
-       RECON TAB
+       ADD TO COP TAB (recon submission)
        ═══════════════════════════════════════════════════════ */
     .recon-form {
       padding: 20px;
     }
 
+    .recon-step-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--accent);
+      margin: 4px 0 8px;
+    }
+
+    .recon-step-label span {
+      color: var(--text-muted);
+      font-weight: 400;
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
     .recon-map-preview {
       width: 100%;
-      height: 160px;
+      height: 42vh;
+      min-height: 240px;
       background: var(--panel);
       border-radius: var(--radius);
-      margin-bottom: 16px;
       overflow: hidden;
       position: relative;
+    }
+
+    /* Category tabs (Observations / Response Actions / Safety) */
+    .cat-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .cat-tab {
+      flex: 0 0 auto;
+      padding: 8px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .cat-tab.active {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Icon card grid */
+    .obs-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .obs-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 6px;
+      min-height: 84px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.7rem;
+      font-weight: 600;
+      font-family: var(--font);
+      text-align: center;
+      line-height: 1.2;
+      cursor: pointer;
+    }
+
+    .obs-card img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+
+    .obs-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent);
+      background: rgba(236, 35, 41, 0.12);
+    }
+
+    /* Subtype chips */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .chip {
+      padding: 8px 14px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 0.8rem;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+
+    .chip.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Photo thumbnails */
+    .recon-photo-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .recon-photo-thumb {
+      position: relative;
+      width: 72px;
+      height: 72px;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .recon-photo-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .recon-photo-thumb button {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
     }
 
     .recon-map-preview .gps-status {

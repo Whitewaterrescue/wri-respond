@@ -1,6 +1,7 @@
-/* WRI Respond — recon observation submit.
- * Reads window.reconPoint (set by map.js GPS/tap), downscales the optional
- * photo client-side, and POSTs through the token-free JSON API.
+/* WRI Respond — "Add to COP" observation submit.
+ * Type catalog + icons come from js/obstypes.js (mirrors the Recon app).
+ * Location comes from window.reconPoint (map.js GPS/tap — tap is always on,
+ * so the point can be anywhere, not just where the reporter stands).
  * Reporter identity is attached server-side from the session — never sent here.
  */
 (function () {
@@ -9,6 +10,11 @@
   var MAX_PHOTOS = 3;
   var MAX_DIM = 1600;
   var JPEG_QUALITY = 0.8;
+
+  var selectedCategory = self.OBS_CATEGORIES[0];
+  var selectedType = null;     // code string
+  var selectedSubtype = null;  // code string or null
+  var reconPhotos = [];        // downscaled JPEG data URIs, capped at MAX_PHOTOS
 
   /* ═══════════════════════════════════════════
      IMAGE DOWNSCALE HELPER (shared — resources.js uses it too)
@@ -47,17 +53,127 @@
   };
 
   /* ═══════════════════════════════════════════
+     TYPE PICKER (category tabs + icon card grid + subtype chips)
+     ═══════════════════════════════════════════ */
+  function renderCatTabs() {
+    var tabs = document.getElementById('reconCatTabs');
+    tabs.innerHTML = '';
+    self.OBS_CATEGORIES.forEach(function (cat) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'cat-tab' + (cat === selectedCategory ? ' active' : '');
+      t.textContent = cat;
+      t.onclick = function () {
+        selectedCategory = cat;
+        renderCatTabs();
+        renderTypeCards();
+      };
+      tabs.appendChild(t);
+    });
+  }
+
+  function renderTypeCards() {
+    var grid = document.getElementById('reconObsGrid');
+    grid.innerHTML = '';
+    self.OBS_TYPES.filter(function (t) { return t.category === selectedCategory; })
+      .forEach(function (t) {
+        var card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'obs-card' + (selectedType === t.code ? ' selected' : '');
+        card.innerHTML = '<img src="assets/obs/' + t.icon + '.png" alt="" loading="lazy">' +
+          '<span>' + esc(t.label) + '</span>';
+        card.onclick = function () { selectType(t); };
+        grid.appendChild(card);
+      });
+    syncSubtypeSection();
+  }
+
+  function selectType(t) {
+    selectedType = t.code;
+    selectedSubtype = null;
+    renderTypeCards();
+  }
+
+  function currentTypeObj() {
+    for (var i = 0; i < self.OBS_TYPES.length; i++) {
+      if (self.OBS_TYPES[i].code === selectedType) return self.OBS_TYPES[i];
+    }
+    return null;
+  }
+
+  function syncSubtypeSection() {
+    var section = document.getElementById('reconSubtypeSection');
+    var t = currentTypeObj();
+    var subs = (t && t.has_subtype && self.OBS_SUBTYPES[t.code]) || null;
+    if (!subs) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    var chips = document.getElementById('reconSubtypeChips');
+    chips.innerHTML = '';
+    subs.forEach(function (s) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'chip' + (selectedSubtype === s.code ? ' selected' : '');
+      chip.textContent = s.label;
+      chip.onclick = function () {
+        selectedSubtype = (selectedSubtype === s.code) ? null : s.code;
+        syncSubtypeSection();
+      };
+      chips.appendChild(chip);
+    });
+  }
+
+  // Built once on first entry into the Add to COP tab (app.js switchTab).
+  var pickerBuilt = false;
+  window.initReconTypePicker = function () {
+    if (pickerBuilt) return;
+    pickerBuilt = true;
+    renderCatTabs();
+    renderTypeCards();
+  };
+
+  /* ═══════════════════════════════════════════
+     PHOTO PREVIEW (downscaled at pick time, thumbnails w/ remove)
+     ═══════════════════════════════════════════ */
+  function renderPhotoPreview() {
+    var wrap = document.getElementById('reconPhotoPreview');
+    wrap.innerHTML = '';
+    reconPhotos.forEach(function (uri, i) {
+      var d = document.createElement('div');
+      d.className = 'recon-photo-thumb';
+      d.innerHTML = '<img src="' + uri + '" alt="">' +
+        '<button type="button" aria-label="Remove photo">&times;</button>';
+      d.querySelector('button').onclick = function () {
+        reconPhotos.splice(i, 1);
+        renderPhotoPreview();
+      };
+      wrap.appendChild(d);
+    });
+  }
+
+  document.getElementById('reconPhoto').addEventListener('change', function (e) {
+    var files = Array.prototype.slice.call(e.target.files || [], 0, MAX_PHOTOS - reconPhotos.length);
+    e.target.value = ''; // same file can be re-picked after a remove
+    function next(i) {
+      if (i >= files.length) { renderPhotoPreview(); return; }
+      downscaleImage(files[i], function (uri) {
+        if (uri && reconPhotos.length < MAX_PHOTOS) reconPhotos.push(uri);
+        next(i + 1);
+      });
+    }
+    next(0);
+  });
+
+  /* ═══════════════════════════════════════════
      FORM SUBMIT
      ═══════════════════════════════════════════ */
   document.getElementById('reconForm').addEventListener('submit', function (e) {
     e.preventDefault();
 
     if (!window.reconPoint) {
-      showToast('GPS position not acquired. Use "Use My Location" or "Tap Map to Place".', true);
+      showToast('No location set. Tap the map to place the point, or use "Use My Location".', true);
       return;
     }
-    var obsType = document.getElementById('reconType').value;
-    if (!obsType) {
+    if (!selectedType) {
       showToast('Select an observation type.', true);
       return;
     }
@@ -66,56 +182,39 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner spinner-sm"></span> Submitting...';
 
-    var photoInput = document.getElementById('reconPhoto');
-    var files = photoInput.files ? Array.prototype.slice.call(photoInput.files, 0, MAX_PHOTOS) : [];
+    var payload = {
+      observation_type: selectedType,
+      observation_subtype: selectedSubtype || '',
+      description: document.getElementById('reconNotes').value.trim(),
+      latitude: window.reconPoint.lat,
+      longitude: window.reconPoint.lon,
+      photos: reconPhotos.slice(0, MAX_PHOTOS)
+    };
 
-    collectPhotos(files, function (photos) {
-      var payload = {
-        observation_type: obsType,
-        description: document.getElementById('reconNotes').value.trim(),
-        latitude: window.reconPoint.lat,
-        longitude: window.reconPoint.lon,
-        photos: photos
-      };
-
-      apiPost('recon-submit', payload)
-        .then(function (result) {
-          btn.disabled = false;
-          btn.textContent = 'Submit Recon Point';
-          if (result && result.success) {
-            document.getElementById('reconForm').classList.add('hidden');
-            document.getElementById('reconSuccess').classList.remove('hidden');
-          } else {
-            showToast('Submit failed: unexpected server response.', true);
-          }
-        })
-        .catch(function (err) {
-          btn.disabled = false;
-          btn.textContent = 'Submit Recon Point';
-          if (handleAuthError(err)) return;
-          if (err && err.transient) {
-            // Recon is NOT queued offline in this pilot — the entry stays on
-            // screen so nothing is lost; resubmit when connected.
-            showToast('No connection — recon needs signal. Your entry stays on this screen; try again when connected.', true);
-            return;
-          }
-          showToast('Submit error: ' + friendlyError(err), true);
-        });
-    });
-  });
-
-  // Downscale each selected photo in sequence; skip any that fail to read.
-  function collectPhotos(files, done) {
-    var photos = [];
-    function next(i) {
-      if (i >= files.length) { done(photos); return; }
-      downscaleImage(files[i], function (dataUri) {
-        if (dataUri) photos.push(dataUri);
-        next(i + 1);
+    apiPost('recon-submit', payload)
+      .then(function (result) {
+        btn.disabled = false;
+        btn.textContent = 'Add to COP';
+        if (result && result.success) {
+          document.getElementById('reconForm').classList.add('hidden');
+          document.getElementById('reconSuccess').classList.remove('hidden');
+        } else {
+          showToast('Submit failed: unexpected server response.', true);
+        }
+      })
+      .catch(function (err) {
+        btn.disabled = false;
+        btn.textContent = 'Add to COP';
+        if (handleAuthError(err)) return;
+        if (err && err.transient) {
+          // Observations are NOT queued offline in this pilot — the entry
+          // stays on screen so nothing is lost; resubmit when connected.
+          showToast('No connection — this needs signal. Your entry stays on this screen; try again when connected.', true);
+          return;
+        }
+        showToast('Submit error: ' + friendlyError(err), true);
       });
-    }
-    next(0);
-  }
+  });
 
   /* ═══════════════════════════════════════════
      RESET
@@ -124,8 +223,11 @@
     document.getElementById('reconForm').classList.remove('hidden');
     document.getElementById('reconSuccess').classList.add('hidden');
     document.getElementById('reconForm').reset();
-    var s = Session.get() || {};
-    document.getElementById('reconReporter').value = s.name || '';
+    selectedType = null;
+    selectedSubtype = null;
+    reconPhotos = [];
+    renderPhotoPreview();
+    renderTypeCards();
     captureReconGPS();
   };
 })();

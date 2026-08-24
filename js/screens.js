@@ -222,95 +222,18 @@
   /* ═══════════════════════════════════════════
      SIGN-IN SCREEN SETUP
      ═══════════════════════════════════════════ */
-  /* Position dropdown — identical list to the check-in/out app (ICS Positions
-     tab via the open ?api=staffrefs read; only icsPositions is used). Chain:
-     live fetch → localStorage snapshot → CONFIG.ROLES baked copy. Selection
-     survives refills; values outside the list land on "Other…". */
-  var ROLES_SNAP_KEY = 'wri_respond_roles';
-
-  window.roleGet = function () {
-    var sel = document.getElementById('signinRole');
-    if (!sel) return '';
-    return sel.value === '__other__'
-      ? document.getElementById('signinRoleOther').value.trim()
-      : sel.value;
-  };
-  window.roleSet = function (value) {
-    var sel = document.getElementById('signinRole');
-    var other = document.getElementById('signinRoleOther');
-    if (!sel) return;
-    var v = String(value || '').trim();
-    var match = false;
-    for (var i = 0; i < sel.options.length; i++) {
-      if (sel.options[i].value === v) { match = true; break; }
-    }
-    if (v && !match) {
-      sel.value = '__other__'; other.value = v;
-      other.style.display = ''; other.required = true;
-    } else {
-      sel.value = v; other.value = '';
-      other.style.display = 'none'; other.required = false;
-    }
-  };
-  // ICS section groupings. staffrefs strips the sheet's blank divider rows,
-  // but the order is stable — a new section starts at its section chief.
-  // Positions before the first anchor (Field Technician) stay ungrouped.
-  var ROLE_SECTIONS = [
-    { label: 'Command',    re: /^Incident Commander/i },
-    { label: 'Operations', re: /^Operations Section Chief/i },
-    { label: 'Planning',   re: /^Planning Section Chief/i },
-    { label: 'Logistics',  re: /^Logistics Section Chief/i },
-    { label: 'Finance',    re: /^Finance Section Chief/i }
-  ];
-  function fillRoleSelect(values) {
-    var sel = document.getElementById('signinRole');
-    if (!sel || !values || !values.length) return;
-    var current = roleGet();
-    sel.innerHTML = '';
-    function opt(parent, v, label) {
-      var o = document.createElement('option');
-      o.value = v; o.textContent = label || v;
-      parent.appendChild(o);
-    }
-    opt(sel, '', 'Select position…');
-    var parent = sel;
-    values.forEach(function (v) {
-      for (var i = 0; i < ROLE_SECTIONS.length; i++) {
-        if (ROLE_SECTIONS[i].re.test(v)) {
-          parent = document.createElement('optgroup');
-          parent.label = ROLE_SECTIONS[i].label;
-          sel.appendChild(parent);
-          break;
-        }
-      }
-      opt(parent, v);
-    });
-    opt(sel, '__other__', 'Other…');
-    roleSet(current);
-  }
-  document.getElementById('signinRole').addEventListener('change', function () {
-    var other = document.getElementById('signinRoleOther');
-    var isOther = this.value === '__other__';
-    other.style.display = isOther ? '' : 'none';
-    other.required = isOther;
-    if (isOther) other.focus();
-  });
-
-  window.populateRoles = function () {
-    var seed = CONFIG.ROLES || [];
-    try {
-      var snap = JSON.parse(localStorage.getItem(ROLES_SNAP_KEY));
-      if (snap && snap.length) seed = snap;
-    } catch (e) {}
-    fillRoleSelect(seed);
-    apiGet('staffrefs')
-      .then(function (data) {
-        var list = (data && data.icsPositions) || [];
-        if (!list.length) return;
-        try { localStorage.setItem(ROLES_SNAP_KEY, JSON.stringify(list)); } catch (e) {}
-        fillRoleSelect(list);
-      })
-      .catch(function () { /* seed already applied */ });
+  /* Simplified check-in (2026-08-24): Name + Organization required, one
+     optional Contact field. The server stores phone and email in separate
+     columns (and the sit-stat roster dials phone), so the single Contact
+     value is classified client-side before send. Returns null when the
+     value is neither — the server would reject it anyway. */
+  window.parseContact = function (raw) {
+    var v = String(raw || '').trim();
+    if (!v) return { phone: '', email: '' };
+    if (v.indexOf('@') !== -1) return { phone: '', email: v };
+    var digits = v.replace(/[\s\-\(\)\.\+]/g, '');
+    if (digits && /^\d+$/.test(digits)) return { phone: v, email: '' };
+    return null;
   };
 
   window.setIncidentName = function () {
@@ -325,11 +248,10 @@
       if (!profile) return;
       if (profile.name) document.getElementById('signinName').value = profile.name;
       if (profile.organization) document.getElementById('signinOrg').value = profile.organization;
-      if (profile.role) roleSet(profile.role);
-      if (profile.phone) document.getElementById('signinPhone').value = profile.phone;
-      if (profile.email) document.getElementById('signinEmail').value = profile.email;
-      // Programmatic field set doesn't fire blur — trigger cert prefill explicitly.
-      if (profile.name && profile.email) gwTryPrefillCerts();
+      // Profiles saved by the old multi-field form carry phone AND email —
+      // prefer phone (the roster dials it).
+      var contact = profile.phone || profile.email || '';
+      if (contact) document.getElementById('signinContact').value = contact;
     } catch (e) {}
   };
 
@@ -347,7 +269,6 @@
 
   // Called once from app.js boot after the incident loads.
   window.initSigninScreen = function () {
-    populateRoles();
     setIncidentName();
     prefillFromLocalStorage();
   };
@@ -401,117 +322,10 @@
   window.selectUser = function (el) {
     document.getElementById('signinName').value = el.getAttribute('data-name') || '';
     document.getElementById('signinOrg').value = el.getAttribute('data-company') || '';
-    document.getElementById('signinPhone').value = el.getAttribute('data-phone') || '';
-    document.getElementById('signinEmail').value = el.getAttribute('data-email') || '';
+    document.getElementById('signinContact').value =
+      el.getAttribute('data-phone') || el.getAttribute('data-email') || '';
     var dd = document.getElementById('userAutocomplete');
     if (dd) dd.style.display = 'none';
-    gwTryPrefillCerts();
-  };
-
-  /* ═══════════════════════════════════════════
-     CERTIFICATIONS (opt-in)
-     ═══════════════════════════════════════════ */
-  var GW_ACTIVE_CERTS = [];
-  var GW_CERTS_LOADED = false;
-  var GW_CERTS_PROMISE = null;
-  var GW_LAST_PREFILL_KEY = '';
-
-  function gwLastNameToken(full) {
-    var s = String(full || '').trim();
-    if (!s) return '';
-    var parts = s.split(/\s+/);
-    return parts[parts.length - 1].toLowerCase();
-  }
-
-  function ensureCertsLoaded() {
-    if (GW_CERTS_PROMISE) return GW_CERTS_PROMISE;
-    GW_CERTS_PROMISE = apiGet('certs')
-      .then(function (data) {
-        GW_ACTIVE_CERTS = (data && data.certifications) || [];
-        GW_CERTS_LOADED = true;
-        gwRenderCertList();
-      })
-      .catch(function () {
-        GW_CERTS_LOADED = true;
-        var loading = document.getElementById('gwCertLoading');
-        if (loading) loading.textContent = 'Could not load certifications.';
-      });
-    return GW_CERTS_PROMISE;
-  }
-
-  function gwRenderCertList() {
-    var wrap = document.getElementById('gwCertList');
-    var loading = document.getElementById('gwCertLoading');
-    if (!GW_CERTS_LOADED) { loading.style.display = 'block'; wrap.innerHTML = ''; return; }
-    loading.style.display = 'none';
-    if (!GW_ACTIVE_CERTS.length) {
-      wrap.innerHTML = '<div style="font-size:12px;color:#666;font-style:italic">No active certifications configured.</div>';
-      return;
-    }
-    var groups = {};
-    GW_ACTIVE_CERTS.forEach(function (c) {
-      var cat = c.category || 'Other';
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(c);
-    });
-    var html = '';
-    Object.keys(groups).sort().forEach(function (cat) {
-      html += '<div style="margin-bottom:10px">';
-      html += '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--color-primary,#1E90FF);letter-spacing:.4px;margin-bottom:6px;padding-bottom:3px;border-bottom:1px solid #ddd">' + esc(cat) + '</div>';
-      groups[cat].forEach(function (c) {
-        var id = 'gw_cert_' + c.code;
-        html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0">';
-        html += '<input type="checkbox" id="' + escAttr(id) + '" data-code="' + escAttr(c.code) + '" style="width:18px;height:18px;flex-shrink:0;margin-top:1px">';
-        html += '<label for="' + escAttr(id) + '" style="font-size:13px;line-height:1.35;cursor:pointer;flex:1">' + esc(c.name);
-        if (c.description) html += '<span style="display:block;font-size:11px;color:#666;font-weight:400;margin-top:2px">' + esc(c.description) + '</span>';
-        html += '</label></div>';
-      });
-      html += '</div>';
-    });
-    wrap.innerHTML = html;
-  }
-
-  function gwGetCheckedCertCodes() {
-    var checked = document.querySelectorAll('#gwCertList input[type="checkbox"]:checked');
-    var codes = [];
-    for (var i = 0; i < checked.length; i++) codes.push(checked[i].getAttribute('data-code'));
-    return codes;
-  }
-
-  function gwSetCheckedCertCodes(codes) {
-    var set = {};
-    codes.forEach(function (c) { set[c] = true; });
-    var boxes = document.querySelectorAll('#gwCertList input[type="checkbox"]');
-    for (var i = 0; i < boxes.length; i++) {
-      boxes[i].checked = !!set[boxes[i].getAttribute('data-code')];
-    }
-  }
-
-  window.gwTryPrefillCerts = function () {
-    var email = document.getElementById('signinEmail').value.trim();
-    var last = gwLastNameToken(document.getElementById('signinName').value);
-    if (!email || !last) return;
-    var key = email.toLowerCase() + '|' + last;
-    if (key === GW_LAST_PREFILL_KEY) return;
-    GW_LAST_PREFILL_KEY = key;
-    ensureCertsLoaded().then(function () {
-      apiGetWithPin('usercerts', window._gwPin, { email: email, last: last })
-        .then(function (data) {
-          var codes = (data && data.codes) || [];
-          if (!codes.length) return;
-          var toggle = document.getElementById('gwCertToggle');
-          if (!toggle.checked) {
-            toggle.checked = true;
-            document.getElementById('gwCertSection').style.display = 'block';
-          }
-          gwSetCheckedCertCodes(codes);
-          var msg = document.getElementById('gwCertPrefilledMsg');
-          msg.textContent = '✓ Loaded ' + codes.length + ' saved certification' + (codes.length === 1 ? '' : 's') +
-            '. Uncheck the toggle above to skip, or adjust below.';
-          msg.style.display = 'block';
-        })
-        .catch(function () { /* silent — prefill is best-effort */ });
-    });
   };
 
   /* ═══════════════════════════════════════════
@@ -558,21 +372,28 @@
   document.getElementById('signinForm').addEventListener('submit', function (e) {
     e.preventDefault();
     var btn = document.getElementById('signinBtn');
+
+    var contact = parseContact(document.getElementById('signinContact').value);
+    if (!contact) {
+      showToast('Contact must be a phone number or an email address.', true);
+      return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner spinner-sm"></span> Checking in...';
 
-    var hasResources = document.getElementById('signinHasResources').checked;
+    var hasResources = false; // resource logging moved to Resources → + Add More
     var payload = {
       pin: window._gwPin,
       name: document.getElementById('signinName').value.trim(),
       organization: document.getElementById('signinOrg').value.trim(),
-      role: roleGet(),
-      phone: document.getElementById('signinPhone').value.trim(),
-      email: document.getElementById('signinEmail').value.trim(),
-      checkin_location: document.getElementById('signinLocation').value.trim(),
-      work_description: document.getElementById('signinWorkDesc').value.trim(),
+      role: '',
+      phone: contact.phone,
+      email: contact.email,
+      checkin_location: '',
+      work_description: '',
       safety_briefing: document.getElementById('signinSafetyBriefing').checked,
-      certifications: document.getElementById('gwCertToggle').checked ? gwGetCheckedCertCodes() : []
+      certifications: []
     };
 
     // Key minted at SUBMIT time and shared by the direct attempt AND any
@@ -632,20 +453,6 @@
         showToast('Check-in error: ' + friendlyError(err), true);
       });
   });
-
-  document.getElementById('gwCertToggle').addEventListener('change', function () {
-    var on = this.checked;
-    document.getElementById('gwCertSection').style.display = on ? 'block' : 'none';
-    if (on) {
-      ensureCertsLoaded();
-      gwTryPrefillCerts();
-    } else {
-      document.getElementById('gwCertPrefilledMsg').style.display = 'none';
-      GW_LAST_PREFILL_KEY = '';
-    }
-  });
-  document.getElementById('signinEmail').addEventListener('blur', function () { gwTryPrefillCerts(); });
-  document.getElementById('signinName').addEventListener('blur', function () { gwTryPrefillCerts(); });
 
   /* ═══════════════════════════════════════════
      RESUME SESSION
@@ -757,7 +564,6 @@
     var inc = (window.APP && APP.incident) || {};
     document.getElementById('headerUser').textContent = s.name || '';
     document.getElementById('headerIncident').textContent = inc.incident_name || '';
-    document.getElementById('reconReporter').value = s.name || '';
     showScreen('main');
     switchTab('map'); // lazily boots the map on first entry
   };

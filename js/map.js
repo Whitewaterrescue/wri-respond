@@ -284,22 +284,51 @@
   };
 
   /* ═══════════════════════════════════════════
-     RECON MINI-MAP + GPS / TAP PLACEMENT
+     ADD-TO-COP PICKER MAP + GPS / TAP PLACEMENT
      ═══════════════════════════════════════════ */
+  // Same public gateway webmap as the main Map tab (its own WebMap instance —
+  // a Map can only live in one view), so responders place points against the
+  // real COP layers. Tap-to-place is ALWAYS on: every tap moves the point, so
+  // an observation can be reported anywhere, not just where the reporter is.
   window.initReconMiniMap = function () {
     loadArcGIS().then(function (require) {
-      require(['esri/Map', 'esri/views/MapView'], function (EsriMap, MapView) {
-        var miniMap = new EsriMap({ basemap: 'satellite' });
-        reconMiniView = new MapView({
+      require(['esri/Map', 'esri/views/MapView', 'esri/WebMap'], function (EsriMap, MapView, WebMap) {
+        var inc = (window.APP && APP.incident) || {};
+        var webmapId = inc.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '';
+        var viewProps = {
           container: 'reconMiniMap',
-          map: miniMap,
-          center: CONFIG.DEFAULT_CENTER,
-          zoom: 10,
-          ui: { components: [] }
-        });
-        // If GPS landed before the mini-map finished loading, draw it now.
+          ui: { components: ['zoom'] },
+          // Taps place the point — feature popups would swallow them.
+          popupEnabled: false
+        };
+        if (webmapId) {
+          viewProps.map = new WebMap({ portalItem: { id: webmapId } });
+        } else {
+          viewProps.map = new EsriMap({ basemap: 'satellite' });
+          viewProps.center = CONFIG.DEFAULT_CENTER;
+          viewProps.zoom = 10;
+        }
+        reconMiniView = new MapView(viewProps);
+        window._reconView = reconMiniView; // headless test handle (no token, public map)
         reconMiniView.when(function () {
+          window.reconMapReady = true; // signals tap-to-place is armed (tests key on this)
+          // If GPS landed before the picker finished loading, draw it now.
           if (window.reconPoint) setReconGraphic(window.reconPoint.lat, window.reconPoint.lon);
+          if (mapTapHandler) { mapTapHandler.remove(); }
+          mapTapHandler = reconMiniView.on('click', function (event) {
+            window.reconPoint = {
+              lat: event.mapPoint.latitude,
+              lon: event.mapPoint.longitude,
+              accuracy: 0
+            };
+            var statusEl = document.getElementById('reconGpsStatus');
+            statusEl.textContent = window.reconPoint.lat.toFixed(5) + ', ' +
+              window.reconPoint.lon.toFixed(5) + ' (map placed)';
+            statusEl.classList.add('acquired');
+            var coordEl = document.getElementById('reconCoordDisplay');
+            if (coordEl) coordEl.textContent = 'Tap again to move the point.';
+            setReconGraphic(window.reconPoint.lat, window.reconPoint.lon, { noZoom: true });
+          });
         });
       });
     }).catch(function (err) {
@@ -308,7 +337,7 @@
     });
   };
 
-  function setReconGraphic(lat, lon) {
+  function setReconGraphic(lat, lon, opts) {
     if (!reconMiniView) return;
     loadArcGIS().then(function (require) {
       require(['esri/Graphic'], function (Graphic) {
@@ -322,7 +351,11 @@
             outline: { color: [255, 255, 255], width: 2 }
           }
         }));
-        reconMiniView.goTo({ center: [lon, lat], zoom: 14 }).catch(function () {});
+        // A map-tapped point must NOT recenter/zoom — the user just chose
+        // this view; only GPS placement flies the camera to the point.
+        if (!(opts && opts.noZoom)) {
+          reconMiniView.goTo({ center: [lon, lat], zoom: 14 }).catch(function () {});
+        }
       });
     });
   }
@@ -361,31 +394,5 @@
 
   window.useDeviceLocation = function () {
     captureReconGPS();
-  };
-
-  window.enableMapTap = function () {
-    if (!reconMiniView) { showToast('Map not ready yet', true); return; }
-    var statusEl = document.getElementById('reconGpsStatus');
-    var coordEl = document.getElementById('reconCoordDisplay');
-    statusEl.textContent = 'Tap map to set location';
-    statusEl.classList.remove('acquired');
-    coordEl.textContent = 'Pan and zoom, then tap to place point';
-
-    reconMiniView.constraints = { snapToZoom: false };
-
-    if (mapTapHandler) { mapTapHandler.remove(); mapTapHandler = null; }
-    mapTapHandler = reconMiniView.on('click', function (event) {
-      mapTapHandler.remove();
-      mapTapHandler = null;
-      window.reconPoint = {
-        lat: event.mapPoint.latitude,
-        lon: event.mapPoint.longitude,
-        accuracy: 0
-      };
-      statusEl.textContent = window.reconPoint.lat.toFixed(5) + ', ' + window.reconPoint.lon.toFixed(5) + ' (map placed)';
-      statusEl.classList.add('acquired');
-      coordEl.textContent = '';
-      setReconGraphic(window.reconPoint.lat, window.reconPoint.lon);
-    });
   };
 })();

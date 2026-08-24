@@ -22,7 +22,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-08-23-1';
+var CACHE_VERSION = '2026-08-24-1';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -39,6 +39,7 @@ var PRECACHE = [
   './manifest.json',
   './css/app.css',
   './js/config.js',
+  './js/obstypes.js',
   './js/api.js',
   './js/session.js',
   './js/outbox.js',
@@ -52,7 +53,34 @@ var PRECACHE = [
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
-  './assets/icons/icon-maskable-512.png'
+  './assets/icons/icon-maskable-512.png',
+  // Observation-type icons for the Add to COP picker (assets/obs/)
+  './assets/obs/aid_station.png',
+  './assets/obs/boat_ramp.png',
+  './assets/obs/current_boom_site.png',
+  './assets/obs/decon.png',
+  './assets/obs/drone_flight.png',
+  './assets/obs/fish_kill.png',
+  './assets/obs/hospital.png',
+  './assets/obs/incident_command_post.png',
+  './assets/obs/injured_wildlife.png',
+  './assets/obs/injury.png',
+  './assets/obs/landing_zone.png',
+  './assets/obs/near_miss.png',
+  './assets/obs/oil_spotted.png',
+  './assets/obs/other_action.png',
+  './assets/obs/other_observation.png',
+  './assets/obs/other_safety.png',
+  './assets/obs/planned_boom_site.png',
+  './assets/obs/planned_staging_area.png',
+  './assets/obs/recovery_complete.png',
+  './assets/obs/response_action.png',
+  './assets/obs/river_hazard.png',
+  './assets/obs/road_closure.png',
+  './assets/obs/safety_briefing.png',
+  './assets/obs/scat_point.png',
+  './assets/obs/staging_area.png',
+  './assets/obs/tactical_operational_team.png'
 ];
 
 self.addEventListener('install', function (event) {

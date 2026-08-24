@@ -49,6 +49,7 @@
         initMainMap();       // lazy-loads the ArcGIS SDK on first open
       }
     } else if (name === 'recon') {
+      if (window.initReconTypePicker) initReconTypePicker();
       if (!APP.reconMapInited) {
         APP.reconMapInited = true;
         initReconMiniMap();
