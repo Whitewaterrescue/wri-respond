@@ -369,7 +369,11 @@
     });
   }
 
-  document.getElementById('signinForm').addEventListener('submit', function (e) {
+  // Module-level DOM wiring is null-guarded: if this file ever loads against
+  // a different index.html build (HTTP-cache skew), degrade — never kill the
+  // whole module (that's the endless-spinner failure mode from 2026-08-24).
+  var signinFormEl = document.getElementById('signinForm');
+  if (signinFormEl) signinFormEl.addEventListener('submit', function (e) {
     e.preventDefault();
     var btn = document.getElementById('signinBtn');
 

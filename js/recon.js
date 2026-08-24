@@ -11,7 +11,9 @@
   var MAX_DIM = 1600;
   var JPEG_QUALITY = 0.8;
 
-  var selectedCategory = self.OBS_CATEGORIES[0];
+  // Guarded: obstypes.js could be missing under HTTP-cache version skew —
+  // degrade rather than kill this module at load (endless-spinner class of bug).
+  var selectedCategory = (self.OBS_CATEGORIES || ['Observations'])[0];
   var selectedType = null;     // code string
   var selectedSubtype = null;  // code string or null
   var reconPhotos = [];        // downscaled JPEG data URIs, capped at MAX_PHOTOS
@@ -150,7 +152,8 @@
     });
   }
 
-  document.getElementById('reconPhoto').addEventListener('change', function (e) {
+  var reconPhotoEl = document.getElementById('reconPhoto');
+  if (reconPhotoEl) reconPhotoEl.addEventListener('change', function (e) {
     var files = Array.prototype.slice.call(e.target.files || [], 0, MAX_PHOTOS - reconPhotos.length);
     e.target.value = ''; // same file can be re-picked after a remove
     function next(i) {
@@ -166,7 +169,8 @@
   /* ═══════════════════════════════════════════
      FORM SUBMIT
      ═══════════════════════════════════════════ */
-  document.getElementById('reconForm').addEventListener('submit', function (e) {
+  var reconFormEl = document.getElementById('reconForm');
+  if (reconFormEl) reconFormEl.addEventListener('submit', function (e) {
     e.preventDefault();
 
     if (!window.reconPoint) {

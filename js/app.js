@@ -82,7 +82,15 @@
   /* ═══════════════════════════════════════════
      BOOT
      ═══════════════════════════════════════════ */
+  // Disarms the index.html boot watchdog (and clears its one-shot auto-reload
+  // flag). Call from every terminal boot state — reached = the shell works.
+  function markBootDone() {
+    window.__wriBootDone = true;
+    try { sessionStorage.removeItem('wri_boot_retry'); } catch (e) {}
+  }
+
   function renderIncidentClosed() {
+    markBootDone();
     document.body.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;' +
       'padding:24px;text-align:center;font-family:inherit;">' +
@@ -93,6 +101,7 @@
   }
 
   function renderBootError(err) {
+    markBootDone();
     hideLoading();
     document.body.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;' +
@@ -117,6 +126,7 @@
   }
 
   function route() {
+    markBootDone();
     var stored = Session.get();
 
     // ── Pending offline check-in (queued, not yet delivered) ──

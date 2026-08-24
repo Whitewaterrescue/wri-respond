@@ -2,10 +2,15 @@
  *
  * ┌─────────────────────────────────────────────────────────────────┐
  * │ BUMP CACHE_VERSION IN EVERY COMMIT THAT CHANGES A PRECACHED     │
- * │ FILE. Runtime fetches are network-first, so a forgotten bump    │
- * │ only means OFFLINE users keep the previous build — online        │
- * │ behavior is always fresh. No skipWaiting(): a new version       │
- * │ activates when all tabs close ("updates apply on next open").  │
+ * │ FILE — and bump the matching ?v= stamps in index.html (script/  │
+ * │ css tags) AND in PRECACHE below to the same string. The stamps  │
+ * │ pin each HTML build to its exact JS/CSS set; without them,      │
+ * │ Pages' max-age=600 HTTP cache can serve old JS with new HTML    │
+ * │ for ~10 min after a deploy (fatal skew, seen live 2026-08-24).  │
+ * │ Runtime fetches are network-first, so a forgotten bump only     │
+ * │ means OFFLINE users keep the previous build — online behavior   │
+ * │ is always fresh. No skipWaiting(): a new version activates      │
+ * │ when all tabs close ("updates apply on next open").            │
  * └─────────────────────────────────────────────────────────────────┘
  *
  * Caching rules (locked in the offline design):
@@ -22,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-08-24-1';
+var CACHE_VERSION = '2026-08-24-2';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -37,19 +42,20 @@ var PRECACHE = [
   './',
   './index.html',
   './manifest.json',
-  './css/app.css',
-  './js/config.js',
-  './js/obstypes.js',
-  './js/api.js',
-  './js/session.js',
-  './js/outbox.js',
-  './js/screens.js',
-  './js/map.js',
-  './js/recon.js',
-  './js/resources.js',
-  './js/requests.js',
-  './js/sitstat.js',
-  './js/app.js',
+  // ?v= must match the stamps in index.html — that's the URL the page asks for.
+  './css/app.css?v=2026-08-24-2',
+  './js/config.js?v=2026-08-24-2',
+  './js/obstypes.js?v=2026-08-24-2',
+  './js/api.js?v=2026-08-24-2',
+  './js/session.js?v=2026-08-24-2',
+  './js/outbox.js?v=2026-08-24-2',
+  './js/screens.js?v=2026-08-24-2',
+  './js/map.js?v=2026-08-24-2',
+  './js/recon.js?v=2026-08-24-2',
+  './js/resources.js?v=2026-08-24-2',
+  './js/requests.js?v=2026-08-24-2',
+  './js/sitstat.js?v=2026-08-24-2',
+  './js/app.js?v=2026-08-24-2',
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

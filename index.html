@@ -8,7 +8,10 @@
   <meta name="theme-color" content="#3A3C3C">
   <link rel="icon" type="image/png" href="assets/icons/icon-192.png">
   <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
-  <link rel="stylesheet" href="css/app.css">
+  <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
+       Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
+       skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
+  <link rel="stylesheet" href="css/app.css?v=2026-08-24-2">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -26,6 +29,41 @@
     <div class="spinner"></div>
     <p id="loadingText">Loading...</p>
   </div>
+
+  <script>
+    /* Boot watchdog — must be inline and before the app modules so it works
+       even when a module fails to load. If a script error kills the boot
+       (seen live 2026-08-24: Pages' max-age=600 HTTP cache served old JS with
+       new HTML for ~10 min after a deploy — module threw on a removed element
+       and the spinner never cleared), auto-reload once to refetch a matched
+       set, then fall back to a visible Reload button. A 25s timer adds the
+       button (without reloading) for boots that just hang. Disarmed the
+       moment the app marks boot complete. */
+    window.__wriBootDone = false;
+    (function () {
+      var retried = false;
+      try { retried = sessionStorage.getItem('wri_boot_retry') === '1'; } catch (e) {}
+      function rescue(msg, allowAutoReload) {
+        if (window.__wriBootDone) return;
+        var ov = document.getElementById('loadingOverlay');
+        if (!ov) return;
+        if (allowAutoReload && !retried) {
+          retried = true;
+          try { sessionStorage.setItem('wri_boot_retry', '1'); } catch (e) {}
+          location.reload();
+          return;
+        }
+        ov.innerHTML = '<p style="color:#e5e7eb;margin-bottom:16px;text-align:center;padding:0 24px;">' + msg + '</p>' +
+          '<button onclick="location.reload()" style="padding:12px 24px;background:#EC2329;color:#fff;border:none;' +
+          'border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">Reload</button>';
+        ov.style.display = 'flex';
+      }
+      window.addEventListener('error', function () {
+        setTimeout(function () { rescue('The app did not load correctly.', true); }, 1500);
+      });
+      setTimeout(function () { rescue('Still loading — check your connection, or reload to try again.', false); }, 25000);
+    })();
+  </script>
 
   <!-- ═══════════════════════════════════════════════════════
        SCREEN 0: PIN GATE
@@ -517,18 +555,18 @@
   </div>
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
-  <script src="js/config.js"></script>
-  <script src="js/obstypes.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/session.js"></script>
-  <script src="js/outbox.js"></script>
-  <script src="js/screens.js"></script>
-  <script src="js/map.js"></script>
-  <script src="js/recon.js"></script>
-  <script src="js/resources.js"></script>
-  <script src="js/requests.js"></script>
-  <script src="js/sitstat.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/config.js?v=2026-08-24-2"></script>
+  <script src="js/obstypes.js?v=2026-08-24-2"></script>
+  <script src="js/api.js?v=2026-08-24-2"></script>
+  <script src="js/session.js?v=2026-08-24-2"></script>
+  <script src="js/outbox.js?v=2026-08-24-2"></script>
+  <script src="js/screens.js?v=2026-08-24-2"></script>
+  <script src="js/map.js?v=2026-08-24-2"></script>
+  <script src="js/recon.js?v=2026-08-24-2"></script>
+  <script src="js/resources.js?v=2026-08-24-2"></script>
+  <script src="js/requests.js?v=2026-08-24-2"></script>
+  <script src="js/sitstat.js?v=2026-08-24-2"></script>
+  <script src="js/app.js?v=2026-08-24-2"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.
