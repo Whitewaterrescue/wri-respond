@@ -186,10 +186,16 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner spinner-sm"></span> Submitting...';
 
+    // Null-guarded: the TF fields shipped after this module — survive HTTP-cache
+    // version skew where old HTML pairs with this JS (or vice versa).
+    var tfNameEl = document.getElementById('reconTfName');
+    var tfStatusEl = document.getElementById('reconTfStatus');
     var payload = {
       observation_type: selectedType,
       observation_subtype: selectedSubtype || '',
       description: document.getElementById('reconNotes').value.trim(),
+      tf_name_raw: tfNameEl ? tfNameEl.value.trim() : '',
+      tf_status_raw: tfStatusEl ? tfStatusEl.value : '',
       latitude: window.reconPoint.lat,
       longitude: window.reconPoint.lon,
       photos: reconPhotos.slice(0, MAX_PHOTOS)

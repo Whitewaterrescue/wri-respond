@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-08-24-2">
+  <link rel="stylesheet" href="css/app.css?v=2026-08-25-1">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -379,6 +379,18 @@
               <textarea id="reconNotes" placeholder="Describe what you observed..."></textarea>
             </div>
             <div class="form-group">
+              <label for="reconTfName">Task Force / Strike Team Name (optional)</label>
+              <input type="text" id="reconTfName" maxlength="100" placeholder="e.g. TF Bravo, Strike Team 2">
+            </div>
+            <div class="form-group">
+              <label for="reconTfStatus">TF Status (optional)</label>
+              <select id="reconTfStatus">
+                <option value="">&mdash;</option>
+                <option value="current">Current</option>
+                <option value="planned">Planned</option>
+              </select>
+            </div>
+            <div class="form-group">
               <label>Photos (optional, up to 3)</label>
               <input type="file" accept="image/*" capture="environment" multiple id="reconPhoto" style="font-size:16px; padding: 10px 0; color: var(--text);">
               <div id="reconPhotoPreview" class="recon-photo-row"></div>
@@ -555,18 +567,18 @@
   </div>
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
-  <script src="js/config.js?v=2026-08-24-2"></script>
-  <script src="js/obstypes.js?v=2026-08-24-2"></script>
-  <script src="js/api.js?v=2026-08-24-2"></script>
-  <script src="js/session.js?v=2026-08-24-2"></script>
-  <script src="js/outbox.js?v=2026-08-24-2"></script>
-  <script src="js/screens.js?v=2026-08-24-2"></script>
-  <script src="js/map.js?v=2026-08-24-2"></script>
-  <script src="js/recon.js?v=2026-08-24-2"></script>
-  <script src="js/resources.js?v=2026-08-24-2"></script>
-  <script src="js/requests.js?v=2026-08-24-2"></script>
-  <script src="js/sitstat.js?v=2026-08-24-2"></script>
-  <script src="js/app.js?v=2026-08-24-2"></script>
+  <script src="js/config.js?v=2026-08-25-1"></script>
+  <script src="js/obstypes.js?v=2026-08-25-1"></script>
+  <script src="js/api.js?v=2026-08-25-1"></script>
+  <script src="js/session.js?v=2026-08-25-1"></script>
+  <script src="js/outbox.js?v=2026-08-25-1"></script>
+  <script src="js/screens.js?v=2026-08-25-1"></script>
+  <script src="js/map.js?v=2026-08-25-1"></script>
+  <script src="js/recon.js?v=2026-08-25-1"></script>
+  <script src="js/resources.js?v=2026-08-25-1"></script>
+  <script src="js/requests.js?v=2026-08-25-1"></script>
+  <script src="js/sitstat.js?v=2026-08-25-1"></script>
+  <script src="js/app.js?v=2026-08-25-1"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.
