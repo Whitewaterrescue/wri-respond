@@ -78,13 +78,24 @@
     Shape__Area: 1, Shape__Length: 1
   };
 
+  // A field whose value is an http(s) URL is rendered as a link, not as escaped
+  // text. Without this a *_url field is dead text you cannot open on a phone.
+  function attrCell(val) {
+    var s = String(val);
+    if (/^https?:\/\/\S+$/.test(s)) {
+      return '<a href="' + escAttr(s) + '" target="_blank" rel="noopener" ' +
+             'style="color:var(--accent);word-break:break-all;">' + esc(s) + '</a>';
+    }
+    return esc(val);
+  }
+
   function buildAttrTable(attrs) {
     var tbl = '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
     for (var k in attrs) {
       if (!attrs.hasOwnProperty(k)) continue;
       if (SKIP_FIELDS[k] || attrs[k] === null || attrs[k] === '' || attrs[k] === undefined) continue;
       tbl += '<tr><td style="padding:3px 6px;color:#999;white-space:nowrap;">' + esc(k.replace(/_/g, ' ')) +
-             '</td><td style="padding:3px 6px;">' + esc(attrs[k]) + '</td></tr>';
+             '</td><td style="padding:3px 6px;">' + attrCell(attrs[k]) + '</td></tr>';
     }
     tbl += '</table>';
     return tbl;
@@ -267,6 +278,13 @@
             map.allLayers.forEach(function (lyr) {
               if (lyr.type !== 'feature') return;
               lyr.when(function () {
+                // A layer that arrived with its OWN popup configured in the web
+                // map keeps it. This used to overwrite unconditionally, which
+                // threw away the 360 pano layer's "Open 360° viewer" link and
+                // left pano_url as a dead string in the attribute table. Layers
+                // composed by activate_gateway_map.py carry no popupInfo, so
+                // they still get the generated table below.
+                if (lyr.popupTemplate && lyr.popupTemplate.content) return;
                 var lyrUrl = lyr.url + '/' + lyr.layerId;
                 var hasAtt = lyr.capabilities && lyr.capabilities.data && lyr.capabilities.data.supportsAttachment;
                 lyr.popupTemplate = {
