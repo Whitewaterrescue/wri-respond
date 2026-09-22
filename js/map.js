@@ -55,7 +55,8 @@
         'esri/widgets/Locate',
         'esri/widgets/LayerList',
         'esri/widgets/Search',
-        'esri/WebMap'
+        'esri/WebMap',
+        'esri/identity/IdentityManager'
       ], function () {});
     }).catch(function () {});
   };
@@ -163,10 +164,150 @@
   }
 
   /* ═══════════════════════════════════════════
+     PHONE TRIM (ported from the Field App's ortho-trim widget)
+     ═══════════════════════════════════════════
+     The staff stable map carries ~115 layers, drone KML overlays and orthos.
+     Two rules, both learned the hard way on 2026-09-17 when Chrome iOS started
+     killing the Field App's renderer:
+       - a HIDDEN KML GroundOverlay still downloads its PNG (31 MB on one
+         incident map), so on a phone KML is REMOVED as the web map adds it,
+         before anything loads — hiding is not enough.
+       - LERC tiled imagery ('imagery-tile') is decoded and held as textures;
+         it is switched off and scale-gated on phones. Dynamic jpgpng orthos
+         ('imagery', the JPEG route) are a picture per view and stay on.
+     Desktop is untouched, and nothing is ever written back to AGOL. */
+  var PHONE_ORTHO_MIN_SCALE = 5000;
+
+  function isPhone() {
+    try {
+      return window.matchMedia('(pointer: coarse)').matches &&
+        Math.min(window.screen.width, window.screen.height) <= 820;
+    } catch (e) { return false; }
+  }
+
+  // Purge KML before load: watch the layer collection as the web map fills it.
+  function purgeKmlOnPhone(map) {
+    if (!isPhone() || !map.allLayers) return;
+    function drop(lyr) {
+      if (!lyr || lyr.type !== 'kml') return;
+      var parent = lyr.parent && lyr.parent.layers ? lyr.parent : map;
+      try { parent.layers.remove(lyr); } catch (e) {}
+    }
+    map.allLayers.forEach(drop);
+    map.allLayers.on('change', function (e) { (e.added || []).forEach(drop); });
+  }
+
+  function gateOrthosOnPhone(map) {
+    if (!isPhone() || !map.allLayers) return 0;
+    var n = 0;
+    map.allLayers.forEach(function (lyr) {
+      if (lyr.type !== 'imagery-tile') return;   // dynamic 'imagery' is phone-safe
+      lyr.visible = false;
+      lyr.minScale = PHONE_ORTHO_MIN_SCALE;
+      n++;
+    });
+    return n;
+  }
+
+  /* ═══════════════════════════════════════════
      MAIN MAP
      ═══════════════════════════════════════════ */
+  // Set once the gateway web map has been read: the stable incident map a
+  // signed-in staff member gets instead. activate_gateway_map.py stamps it into
+  // the gateway map's own JSON (`wriGateway.stableMapId`) on every rebuild, so
+  // it follows the active incident with no per-incident push to this app.
+  var stableMapId = null;
+
+  /* The sign-in / sign-out control that lives on the map. Deliberately small and
+   * out of the way: responders never need it, and the public map is what the
+   * QR promises. Only shown once the gateway map has told us there IS a stable
+   * map to switch to. */
+  function buildStaffSignIn(isStaffView) {
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex;flex-direction:column;gap:6px;align-items:flex-start;max-width:78vw;';
+    var btn = document.createElement('button');
+    btn.style.cssText = 'background:var(--panel);border:1px solid var(--border);color:var(--text);' +
+      'padding:7px 11px;border-radius:6px;cursor:pointer;font-size:12px;font-family:var(--font);font-weight:600;';
+    var note = document.createElement('div');
+    note.style.cssText = 'background:var(--panel);border:1px solid var(--border);color:var(--text-muted);' +
+      'padding:6px 9px;border-radius:6px;font-size:11px;line-height:1.35;display:none;';
+
+    function paint() {
+      var auth = window.ArcgisAuth && ArcgisAuth.get();
+      if (isStaffView && auth) {
+        btn.textContent = 'WRI staff map · ' + (auth.username || 'signed in') + ' — sign out';
+        note.style.display = 'none';
+      } else if (!stableMapId) {
+        btn.textContent = 'WRI staff sign-in';
+        btn.disabled = true;
+        btn.title = 'No stable incident map is published for this incident yet.';
+      } else {
+        btn.textContent = 'WRI staff sign-in';
+      }
+    }
+
+    function say(msg, bad) {
+      note.textContent = msg;
+      note.style.color = bad ? 'var(--danger)' : 'var(--text-muted)';
+      note.style.display = msg ? 'block' : 'none';
+    }
+
+    btn.onclick = function () {
+      var auth = window.ArcgisAuth && ArcgisAuth.get();
+      if (auth) {
+        ArcgisAuth.signOut();
+        window.reloadMainMap();
+        return;
+      }
+      say('Opening ArcGIS sign-in…');
+      btn.disabled = true;
+      ArcgisAuth.signIn().then(function () {
+        say('');
+        window.reloadMainMap();
+      }).catch(function (err) {
+        btn.disabled = false;
+        say(err.message || 'Sign-in failed.', true);
+      });
+    };
+
+    paint();
+    wrap.appendChild(btn);
+    wrap.appendChild(note);
+    if (isStaffView) {
+      say('Full incident map — everything your ArcGIS account can see. Sign out to return to the public map.');
+    }
+    return wrap;
+  }
+
+  /* Rebuild the Map tab after a sign-in or sign-out. The view owns the map, so
+   * it has to be destroyed rather than re-pointed. */
+  window.reloadMainMap = function () {
+    if (mapView) {
+      try { mapView.destroy(); } catch (e) {}
+      mapView = null;
+    }
+    window.initMainMap();
+  };
+
+  function loadStableMapId(gatewayId) {
+    if (stableMapId || !gatewayId) return Promise.resolve(stableMapId);
+    return fetch('https://www.arcgis.com/sharing/rest/content/items/' + gatewayId +
+                 '/data?f=json', { credentials: 'omit' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        stableMapId = (d && d.wriGateway && d.wriGateway.stableMapId) || null;
+        return stableMapId;
+      })
+      .catch(function () { return null; });
+  }
+
   window.initMainMap = function () {
-    loadArcGIS().then(function (require) {
+    var inc0 = (window.APP && APP.incident) || {};
+    // Which stable map a staff sign-in would switch to. Resolved before the SDK
+    // work so the control can paint correctly on the first render; a failure
+    // here just means the button says there is no staff map.
+    loadStableMapId(inc0.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '')
+      .then(loadArcGIS).then(function (require) {
       require([
         'esri/Map',
         'esri/views/MapView',
@@ -174,19 +315,38 @@
         'esri/widgets/Locate',
         'esri/widgets/LayerList',
         'esri/widgets/Search',
-        'esri/WebMap'
-      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap) {
+        'esri/WebMap',
+        'esri/identity/IdentityManager'
+      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap, esriId) {
         var inc = (window.APP && APP.incident) || {};
         var reconUrl = layerBaseUrl(inc, 'recon');
         var resourceUrl = layerBaseUrl(inc, 'resource');
         // API value wins; fall back to the static config id.
         var webmapId = inc.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '';
+
+        // OPT-IN staff view: a WRI member who signed in gets the full stable
+        // incident map on their OWN token. Everyone else — the default — gets
+        // the public gateway map with no token at all.
+        var auth = window.ArcgisAuth && ArcgisAuth.get();
+        var staffMap = !!(auth && stableMapId);
+        if (staffMap) {
+          // Hand the user's token to the SDK for this portal + its services, so
+          // the org-private map and its layers load as that person.
+          [ArcgisAuth.PORTAL + '/sharing/rest',
+           'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services'
+          ].forEach(function (server) {
+            try { esriId.registerToken({ server: server, token: auth.token, expires: auth.expires }); } catch (e) {}
+          });
+          webmapId = stableMapId;
+        }
+
         var usingWebMap = !!webmapId;
         var map;
 
         if (usingWebMap) {
-          // Public webmap, loaded anonymously — no portal token.
+          // Public gateway webmap (anonymous, no token) unless staffMap above.
           map = new WebMap({ portalItem: { id: webmapId } });
+          purgeKmlOnPhone(map);          // must be wired BEFORE the map loads
         } else {
           map = new EsriMap({ basemap: 'satellite' });
 
@@ -233,6 +393,8 @@
 
         mapView.when(function () {
           mapView.ui.add(new Locate({ view: mapView }), 'top-right');
+          gateOrthosOnPhone(map);
+          mapView.ui.add(buildStaffSignIn(staffMap), 'bottom-left');
 
           // Deferred: constructing Search immediately fetches world-geocoder
           // metadata, competing with the first tile/feature window on slow links.
