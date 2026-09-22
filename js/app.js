@@ -48,6 +48,9 @@
         APP.mapInited = true;
         initMainMap();       // lazy-loads the ArcGIS SDK on first open
       }
+    } else if (name === 'live') {
+      // Never mounts the stream — Nova loads on tap only (js/livestream.js).
+      if (window.initLiveTab) initLiveTab();
     } else if (name === 'recon') {
       if (window.initReconTypePicker) initReconTypePicker();
       if (!APP.reconMapInited) {
@@ -77,6 +80,9 @@
     }
 
     if (name !== 'sitstat') stopSitStatAutoRefresh();
+    // Nova runs its own WebGL map + video; leaving the tab unloads it after a
+    // short grace so it never runs alongside the ArcGIS view on a phone.
+    if (name !== 'live' && window.scheduleLiveTeardown) scheduleLiveTeardown();
   };
 
   /* ═══════════════════════════════════════════

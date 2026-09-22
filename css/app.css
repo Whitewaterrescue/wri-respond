@@ -415,8 +415,15 @@
       font-family: var(--font);
       cursor: pointer;
       transition: color 0.2s;
-      padding: 0;
+      padding: 0 2px;
       min-width: 44px;
+    }
+
+    /* 5 tabs since the Live stream landed — "Add to COP" is the widest label
+       and gets ~70px on a 360px phone. Shrink rather than wrap. */
+    @media (max-width: 400px) {
+      .tab-bar button { font-size: 0.58rem; }
+      .tab-bar button .tab-icon { font-size: 1.15rem; }
     }
 
     .tab-bar button .tab-icon {
@@ -452,6 +459,70 @@
     .tab-pane.active {
       display: block;
     }
+
+    /* ═══════════════════════════════════════════════════════
+       LIVE STREAM TAB (Nova) — js/livestream.js
+       ═══════════════════════════════════════════════════════ */
+    #tab-live { overflow: hidden; }
+
+    .live-launcher {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      padding: 24px 20px 32px;
+      text-align: center;
+    }
+
+    .live-launcher h2 { font-size: 1.35rem; color: var(--text-bright); }
+    .live-sub { font-size: 0.95rem; color: var(--text-muted); max-width: 30rem; }
+
+    .live-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .live-status { font-size: 0.85rem; color: var(--warning); max-width: 30rem; }
+    .live-offline { font-size: 0.85rem; color: var(--danger); }
+    .live-note {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      max-width: 30rem;
+      line-height: 1.5;
+    }
+
+    /* Covers the pane while playing; the launcher is hidden by JS. */
+    .live-player {
+      display: none;
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      flex-direction: column;
+      background: #000;
+    }
+
+    .live-player.on { display: flex; }
+
+    .live-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+
+    .live-bar-title { flex: 1; font-weight: 600; color: var(--text-bright); }
+    .live-bar a { color: var(--text-muted); text-decoration: none; }
+    .live-bar a:hover { color: var(--text-bright); }
+
+    /* min-height:0 or the flex child refuses to shrink and the bar scrolls off. */
+    .live-frame { flex: 1; min-height: 0; }
+    .live-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
 
     /* ═══════════════════════════════════════════════════════
        SIGN-IN SCREEN

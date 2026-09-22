@@ -14,6 +14,13 @@ self.CONFIG = {
   // satellite + recon/resource views. The API's ?api=incident value wins if set.
   GATEWAY_WEBMAP_ID: 'e6c53a5f666c459b81953d01331df165',
 
+  // Nova live stream (Live tab). Same workspace the Field App's Live Stream
+  // page and the BNSF/WRI/MT-WY ICP viewers embed — hardcoded there too, so a
+  // workspace change is a deliberate edit in each. Nova renders anonymously and
+  // serves `frame-ancestors *`, so no token and no sign-in are involved.
+  NOVA_LIVE_URL: 'https://app.mapnova.com/live?workspaceId=c9c97b46-4d56-4869-89ed-fba4ed6467de',
+  LIVE_TEARDOWN_MS: 3000,   // hidden/left this long -> unload the stream
+
   // ArcGIS JS SDK (AMD build, lazy-loaded on first Map-tab open)
   ARCGIS_JS:  'https://js.arcgis.com/4.29/',
   ARCGIS_CSS: 'https://js.arcgis.com/4.29/esri/themes/dark/main.css',

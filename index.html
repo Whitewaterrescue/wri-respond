@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-08-31-1">
+  <link rel="stylesheet" href="css/app.css?v=2026-09-22-1">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -351,6 +351,32 @@
         <div id="mapDiv"></div>
       </div>
 
+      <!-- LIVE STREAM TAB (Nova) — js/livestream.js. The frame is created on tap
+           only and destroyed ~3s after you leave; see that file for why. -->
+      <div class="tab-pane" id="tab-live">
+        <div class="live-launcher" id="liveLauncher">
+          <h2>Live Stream</h2>
+          <p class="live-sub">The incident drone / field camera feed, straight from Nova.</p>
+          <div class="live-actions">
+            <a class="btn btn-secondary" id="liveOpenBtn" target="_blank" rel="noopener">Open Live Stream &nearr;</a>
+            <button class="btn btn-primary" type="button" id="liveWatchBtn" onclick="mountLive()">Watch here</button>
+          </div>
+          <div class="live-status" id="liveStatus"></div>
+          <div class="live-offline" id="liveOffline" style="display:none;">You are offline &mdash; the stream needs a connection.</div>
+          <p class="live-note">&ldquo;Watch here&rdquo; plays inside this app and stops when you switch tabs, so it never
+            competes with the map for memory. There may be no feed if nothing is flying.</p>
+        </div>
+
+        <div class="live-player" id="livePlayer">
+          <div class="live-bar">
+            <span class="live-bar-title">Nova Live Stream</span>
+            <a id="liveOpenBtn2" target="_blank" rel="noopener">Open &nearr;</a>
+            <button class="btn btn-sm btn-secondary" type="button" onclick="unmountLive('')">Close</button>
+          </div>
+          <div class="live-frame" id="liveFrameHost"></div>
+        </div>
+      </div>
+
       <!-- ADD TO COP TAB (recon submission) -->
       <div class="tab-pane" id="tab-recon">
         <div class="recon-form">
@@ -503,6 +529,10 @@
         <span class="tab-icon">&#128506;</span>
         Map
       </button>
+      <button onclick="switchTab('live')" id="tabBtn-live">
+        <span class="tab-icon">&#128250;</span>
+        Live
+      </button>
       <button onclick="switchTab('recon')" id="tabBtn-recon">
         <span class="tab-icon">&#128205;</span>
         Add to COP
@@ -567,18 +597,19 @@
   </div>
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
-  <script src="js/config.js?v=2026-08-31-1"></script>
-  <script src="js/obstypes.js?v=2026-08-31-1"></script>
-  <script src="js/api.js?v=2026-08-31-1"></script>
-  <script src="js/session.js?v=2026-08-31-1"></script>
-  <script src="js/outbox.js?v=2026-08-31-1"></script>
-  <script src="js/screens.js?v=2026-08-31-1"></script>
-  <script src="js/map.js?v=2026-08-31-1"></script>
-  <script src="js/recon.js?v=2026-08-31-1"></script>
-  <script src="js/resources.js?v=2026-08-31-1"></script>
-  <script src="js/requests.js?v=2026-08-31-1"></script>
-  <script src="js/sitstat.js?v=2026-08-31-1"></script>
-  <script src="js/app.js?v=2026-08-31-1"></script>
+  <script src="js/config.js?v=2026-09-22-1"></script>
+  <script src="js/obstypes.js?v=2026-09-22-1"></script>
+  <script src="js/api.js?v=2026-09-22-1"></script>
+  <script src="js/session.js?v=2026-09-22-1"></script>
+  <script src="js/outbox.js?v=2026-09-22-1"></script>
+  <script src="js/screens.js?v=2026-09-22-1"></script>
+  <script src="js/map.js?v=2026-09-22-1"></script>
+  <script src="js/recon.js?v=2026-09-22-1"></script>
+  <script src="js/resources.js?v=2026-09-22-1"></script>
+  <script src="js/requests.js?v=2026-09-22-1"></script>
+  <script src="js/sitstat.js?v=2026-09-22-1"></script>
+  <script src="js/livestream.js?v=2026-09-22-1"></script>
+  <script src="js/app.js?v=2026-09-22-1"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.
