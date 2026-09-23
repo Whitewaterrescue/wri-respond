@@ -290,15 +290,29 @@
     window.initMainMap();
   };
 
+  // Read from the gateway item's TAGS first (`wri-stable:<id>`), falling back to the
+  // old `wriGateway.stableMapId` inside the map JSON.
+  //
+  // The map-JSON key was the original home and it does not survive: it round-trips
+  // through the REST API but a Map Viewer save discards unknown keys, so the first time
+  // Cody hand-edited the gateway map (2026-09-23) the staff sign-in silently lost its
+  // target. Tags are ITEM metadata — a Map Viewer save rewrites the map's `text`, not the
+  // item's tags — so the pointer survives exactly the edit that broke it.
   function loadStableMapId(gatewayId) {
     if (stableMapId || !gatewayId) return Promise.resolve(stableMapId);
-    return fetch('https://www.arcgis.com/sharing/rest/content/items/' + gatewayId +
-                 '/data?f=json', { credentials: 'omit' })
+    var base = 'https://www.arcgis.com/sharing/rest/content/items/' + gatewayId;
+    return fetch(base + '?f=json', { credentials: 'omit' })
       .then(function (r) { return r.json(); })
-      .then(function (d) {
-        stableMapId = (d && d.wriGateway && d.wriGateway.stableMapId) || null;
-        return stableMapId;
+      .then(function (item) {
+        var tag = ((item && item.tags) || []).filter(function (t) {
+          return String(t).indexOf('wri-stable:') === 0;
+        })[0];
+        if (tag) return tag.slice('wri-stable:'.length);
+        return fetch(base + '/data?f=json', { credentials: 'omit' })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { return (d && d.wriGateway && d.wriGateway.stableMapId) || null; });
       })
+      .then(function (id) { stableMapId = id || null; return stableMapId; })
       .catch(function () { return null; });
   }
 
