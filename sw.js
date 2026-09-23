@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-09-23-3';
+var CACHE_VERSION = '2026-09-23-4';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -43,22 +43,28 @@ var PRECACHE = [
   './index.html',
   './manifest.json',
   // ?v= must match the stamps in index.html — that's the URL the page asks for.
-  './css/app.css?v=2026-09-23-3',
-  './js/config.js?v=2026-09-23-3',
-  './js/obstypes.js?v=2026-09-23-3',
-  './js/api.js?v=2026-09-23-3',
-  './js/session.js?v=2026-09-23-3',
-  './js/outbox.js?v=2026-09-23-3',
-  './js/screens.js?v=2026-09-23-3',
-  './js/arcgis-auth.js?v=2026-09-23-3',
-  './js/map.js?v=2026-09-23-3',
-  './js/recon.js?v=2026-09-23-3',
-  './js/resources.js?v=2026-09-23-3',
-  './js/requests.js?v=2026-09-23-3',
-  './js/sitstat.js?v=2026-09-23-3',
-  './js/ics201.js?v=2026-09-23-3',
-  './js/livestream.js?v=2026-09-23-3',
-  './js/app.js?v=2026-09-23-3',
+  './css/app.css?v=2026-09-23-4',
+  './js/config.js?v=2026-09-23-4',
+  './js/obstypes.js?v=2026-09-23-4',
+  './js/api.js?v=2026-09-23-4',
+  './js/session.js?v=2026-09-23-4',
+  './js/outbox.js?v=2026-09-23-4',
+  './js/screens.js?v=2026-09-23-4',
+  './js/arcgis-auth.js?v=2026-09-23-4',
+  './js/map.js?v=2026-09-23-4',
+  './js/maptools.js?v=2026-09-23-4',
+  // ES modules loaded on demand by the downgradient tool. Unstamped on purpose: the
+  // import URL is built at runtime and must match the cached key exactly. Same-origin
+  // GETs are network-first anyway, so these stay fresh online and work offline.
+  './js/lib/gradient.js',
+  './js/lib/elevation.js',
+  './js/recon.js?v=2026-09-23-4',
+  './js/resources.js?v=2026-09-23-4',
+  './js/requests.js?v=2026-09-23-4',
+  './js/sitstat.js?v=2026-09-23-4',
+  './js/ics201.js?v=2026-09-23-4',
+  './js/livestream.js?v=2026-09-23-4',
+  './js/app.js?v=2026-09-23-4',
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

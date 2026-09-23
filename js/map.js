@@ -57,7 +57,12 @@
         'esri/widgets/Search',
         'esri/WebMap',
         'esri/identity/IdentityManager',
-        'esri/config'
+        'esri/config',
+        'esri/layers/GraphicsLayer',
+        'esri/Graphic',
+        'esri/geometry/Point',
+        'esri/geometry/Polyline',
+        'esri/core/reactiveUtils'
       ], function () {});
     }).catch(function () {});
   };
@@ -332,8 +337,14 @@
         'esri/widgets/Search',
         'esri/WebMap',
         'esri/identity/IdentityManager',
-        'esri/config'
-      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap, esriId, esriConfig) {
+        'esri/config',
+        'esri/layers/GraphicsLayer',
+        'esri/Graphic',
+        'esri/geometry/Point',
+        'esri/geometry/Polyline',
+        'esri/core/reactiveUtils'
+      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap, esriId, esriConfig,
+                   GraphicsLayer, Graphic, Point, Polyline, reactiveUtils) {
         var inc = (window.APP && APP.incident) || {};
         var reconUrl = layerBaseUrl(inc, 'recon');
         var resourceUrl = layerBaseUrl(inc, 'resource');
@@ -423,6 +434,11 @@
           mapView.ui.add(new Locate({ view: mapView }), 'top-right');
           gateOrthosOnPhone(map);
           mapView.ui.add(buildStaffSignIn(staffMap), 'bottom-left');
+          // Analysis tools share THIS view rather than each carrying its own map.
+          if (window.initMapTools) {
+            initMapTools(mapView, { GraphicsLayer: GraphicsLayer, Graphic: Graphic, Point: Point,
+                                    Polyline: Polyline, reactiveUtils: reactiveUtils });
+          }
 
           // Deferred: constructing Search immediately fetches world-geocoder
           // metadata, competing with the first tile/feature window on slow links.

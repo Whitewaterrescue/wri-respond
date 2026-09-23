@@ -461,6 +461,66 @@
     }
 
     /* ═══════════════════════════════════════════════════════
+       MAP TOOLS — js/maptools.js
+       ═══════════════════════════════════════════════════════ */
+    .maptool-bar { display: flex; gap: 6px; }
+    .maptool-bar button {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font: 600 0.78rem var(--font);
+      cursor: pointer;
+    }
+    .maptool-bar button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    /* Bottom sheet inside the map pane — phone first. Sits above the map and below
+       the tab bar, and is capped so the map stays usable while reading a result. */
+    .maptool-panel {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      max-height: 55%;
+      display: none;
+      flex-direction: column;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      z-index: 50;
+    }
+    .maptool-panel.on { display: flex; }
+
+    .maptool-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      font: 700 0.9rem var(--font);
+      color: var(--text-bright);
+    }
+    .maptool-body {
+      padding: 12px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      font-size: 0.82rem;
+    }
+
+    .dg-badge { display: inline-block; padding: 3px 9px; border-radius: 999px;
+                color: #fff; font-weight: 700; font-size: 0.72rem; }
+    .dg-blurb { color: var(--text-muted); margin: 8px 0 10px; line-height: 1.45; }
+    .dg-az { font-size: 1.5rem; font-weight: 700; color: var(--text-bright); }
+    .dg-det { color: var(--text-muted); margin-bottom: 10px; }
+    .dg-tbl { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+    .dg-tbl th { text-align: left; color: var(--text-muted); font-weight: 600;
+                 border-bottom: 1px solid var(--border); padding: 4px 6px; }
+    .dg-tbl td { padding: 4px 6px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .dg-tbl tr.drop td { opacity: 0.45; }
+    .dg-why, .dg-note { color: var(--text-muted); font-size: 0.74rem; margin-top: 6px; line-height: 1.4; }
+    .dg-meta { color: var(--text-muted); font-size: 0.72rem; margin-top: 10px;
+               border-top: 1px solid var(--border); padding-top: 8px; }
+    .dg-hint { color: var(--text-muted); line-height: 1.45; }
+    .dg-err { color: var(--danger); line-height: 1.45; }
+
+    /* ═══════════════════════════════════════════════════════
        ICS 201 TAB — js/ics201.js
        ═══════════════════════════════════════════════════════ */
     /* NEVER put `display` on the bare id rule — an id outranks `.tab-pane
