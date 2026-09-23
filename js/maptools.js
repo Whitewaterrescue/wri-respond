@@ -94,6 +94,11 @@
    * downgradient embed's ?at=lat,lon deep link: it is how a headless check drives the
    * tool (synthetic Esri hit-testing is unreliable), and it is the hook a future
    * "analyse this recon point" action would use. */
+  /* Graphics the active tool has on the map. Same purpose as mapToolAt: a headless check
+   * cannot see WebGL, so the count is the only honest proof that a plume was actually
+   * drawn rather than merely computed. */
+  window.mapToolGraphicCount = function () { return gfx ? gfx.graphics.length : -1; };
+
   window.mapToolAt = function (lat, lon) {
     var t = active && TOOLS[active];
     if (t && t.onClick) t.onClick({ latitude: lat, longitude: lon });
@@ -308,7 +313,15 @@
     { url: SVC + 'MF_Flathead_GRP_Points_2025_WFL1/FeatureServer/0', nameField: 'Site_Name' },
     { url: SVC + 'WRI_GRP_WAB_pub/FeatureServer/0', nameField: 'site_name' }
   ];
-  var ST_CFG = { safetyFactor: 1.5, timingModel: 'hydraulic', minStreamOrder: 4,
+  // timingModel MUST match the response viewers. 'jobson' tracks the LEADING EDGE
+  // (t_lead, USGS WRIR 96-4013 dye-study regressions); 'hydraulic' tracks the PEAK
+  // (cum_time). The gateway shipped on hydraulic and read ~36% short against the WRI
+  // viewer on the same Wabash click (46.7 km vs 63.4 km at 24 h, measured 2026-09-23)
+  // -- and hydraulic mode emits no hourly.band, so the uncertainty underlay below never
+  // drew either, making the plume look shorter still. Leading edge is also the right
+  // question for response: boom has to be in the water BEFORE the first oil arrives.
+  // Apps on 'jobson': Field App (both maps), BNSF, UP, WRI, MT/WY -- and now this.
+  var ST_CFG = { safetyFactor: 1.5, timingModel: 'jobson', minStreamOrder: 4,
                  maxHours: 24, maxDistanceKm: 300, asOf: null, verbose: false };
   var ST = null, stInflight = null;
 
@@ -366,16 +379,22 @@
       symbol: { type: 'simple-marker', style: 'x', size: 14, outline: { color: '#000', width: 3 } }
     }));
     var rows = res.trace || [];
+    // Mirror the engine's own timeOf(): in jobson mode the meaningful clock is the LEADING
+    // EDGE (t_lead), in hydraulic it is the peak (cum_time). Colouring bands by cum_time
+    // while the hour marks are placed by t_lead would put the 3 h colour change in a
+    // visibly different place from the "3 hr" label on the same line.
+    var jobson = (res.timing_model || ST_CFG.timingModel) === 'jobson';
+    var tOf = function (r) { return jobson ? r.t_lead : r.cum_time; };
     var b0 = 0;
     for (var i = 1; i <= rows.length; i++) {
       var done = i === rows.length;
-      var changed = !done && bandColor(rows[i].cum_time) !== bandColor(rows[b0].cum_time);
+      var changed = !done && bandColor(tOf(rows[i])) !== bandColor(tOf(rows[b0]));
       if (done || changed) {
         var seg = rows.slice(b0, Math.min(i + 1, rows.length));
         gfx.add(new E.Graphic({
           geometry: new E.Polyline({ paths: [seg.map(function (r) { return [r.lon, r.lat]; })],
                                      spatialReference: { wkid: 4326 } }),
-          symbol: { type: 'simple-line', color: bandColor(rows[b0].cum_time), width: 4 }
+          symbol: { type: 'simple-line', color: bandColor(tOf(rows[b0])), width: 4 }
         }));
         b0 = i;
       }
@@ -429,6 +448,7 @@
     (res.warnings || []).forEach(function (w) { h += '<div class="dg-why">' + esc(w) + '</div>'; });
     notes.forEach(function (n) { h += '<div class="dg-note">' + esc(n) + '</div>'; });
     h += '<div class="dg-meta">Engine ' + esc(ST ? ST.ENGINE_VERSION : '') +
+         ' &middot; leading edge (' + ST_CFG.timingModel + ')' +
          ' &middot; safety factor ' + ST_CFG.safetyFactor +
          ' &middot; USGS NLDI/NWIS &middot; nothing is saved</div>';
     setBody(h);
