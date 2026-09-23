@@ -119,15 +119,34 @@
       var div = document.createElement('div');
       var attrs = feature.graphic.attributes;
       var oid = getObjectId(attrs);
-      var uid = 'att-' + Math.random().toString(36).slice(2) + '-' + oid;
-      div.innerHTML = buildAttrTable(attrs) +
-        '<div id="' + uid + '" style="margin-top:8px;color:#999;font-size:11px;">Loading attachments...</div>';
+      div.innerHTML = buildAttrTable(attrs);
+
+      // Hold a DIRECT reference to the placeholder. The previous version stamped a
+      // random id and re-found it with document.getElementById inside the fetch
+      // callback -- but this div is DETACHED until the SDK inserts it into the popup,
+      // so a fast response resolved first, getElementById returned null, the handler
+      // bailed on `if (!el) return`, and the popup sat on "Loading attachments..."
+      // forever. Cody hit it on a phone against the Wabash sheets on 2026-09-23;
+      // queryAttachments answers in ~15 ms warm, so the race is lost more often than won.
+      var el = document.createElement('div');
+      el.style.cssText = 'margin-top:8px;color:#999;font-size:11px;';
+      el.textContent = 'Loading attachments…';
+      div.appendChild(el);
+
+      if (oid == null) {
+        el.textContent = 'No attachments';
+        return div;
+      }
+
+      // Nothing here can hang the popup: a stalled network resolves to a message.
+      var stalled = setTimeout(function () {
+        if (el.textContent.indexOf('Loading') === 0) el.textContent = 'Attachments are slow to load…';
+      }, 8000);
 
       fetch(layerUrl + '/' + oid + '/attachments?f=json')
         .then(function (r) { return r.json(); })
         .then(function (data) {
-          var el = document.getElementById(uid);
-          if (!el) return;
+          clearTimeout(stalled);
           if (!data.attachmentInfos || data.attachmentInfos.length === 0) {
             el.textContent = 'No attachments';
             return;
@@ -154,8 +173,8 @@
           el.innerHTML = html;
         })
         .catch(function () {
-          var el = document.getElementById(uid);
-          if (el) el.textContent = 'Could not load attachments';
+          clearTimeout(stalled);
+          el.textContent = 'Could not load attachments';
         });
       return div;
     };
@@ -434,6 +453,12 @@
           mapView.ui.add(new Locate({ view: mapView }), 'top-right');
           gateOrthosOnPhone(map);
           mapView.ui.add(buildStaffSignIn(staffMap), 'bottom-left');
+          // Debug/test handle. The popup attachment path can only be exercised through a
+          // real feature on the real map, and the 2026-09-23 "Loading attachments..."
+          // bug shipped precisely because nothing could reach it. Read-only reference to
+          // an object already in the page; carries nothing a devtools console would not.
+          window.wriMapView = mapView;
+
           // Analysis tools share THIS view rather than each carrying its own map.
           if (window.initMapTools) {
             initMapTools(mapView, { GraphicsLayer: GraphicsLayer, Graphic: Graphic, Point: Point,
