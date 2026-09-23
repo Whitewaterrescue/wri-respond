@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-09-23-1';
+var CACHE_VERSION = '2026-09-23-2';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -43,22 +43,22 @@ var PRECACHE = [
   './index.html',
   './manifest.json',
   // ?v= must match the stamps in index.html — that's the URL the page asks for.
-  './css/app.css?v=2026-09-23-1',
-  './js/config.js?v=2026-09-23-1',
-  './js/obstypes.js?v=2026-09-23-1',
-  './js/api.js?v=2026-09-23-1',
-  './js/session.js?v=2026-09-23-1',
-  './js/outbox.js?v=2026-09-23-1',
-  './js/screens.js?v=2026-09-23-1',
-  './js/arcgis-auth.js?v=2026-09-23-1',
-  './js/map.js?v=2026-09-23-1',
-  './js/recon.js?v=2026-09-23-1',
-  './js/resources.js?v=2026-09-23-1',
-  './js/requests.js?v=2026-09-23-1',
-  './js/sitstat.js?v=2026-09-23-1',
-  './js/ics201.js?v=2026-09-23-1',
-  './js/livestream.js?v=2026-09-23-1',
-  './js/app.js?v=2026-09-23-1',
+  './css/app.css?v=2026-09-23-2',
+  './js/config.js?v=2026-09-23-2',
+  './js/obstypes.js?v=2026-09-23-2',
+  './js/api.js?v=2026-09-23-2',
+  './js/session.js?v=2026-09-23-2',
+  './js/outbox.js?v=2026-09-23-2',
+  './js/screens.js?v=2026-09-23-2',
+  './js/arcgis-auth.js?v=2026-09-23-2',
+  './js/map.js?v=2026-09-23-2',
+  './js/recon.js?v=2026-09-23-2',
+  './js/resources.js?v=2026-09-23-2',
+  './js/requests.js?v=2026-09-23-2',
+  './js/sitstat.js?v=2026-09-23-2',
+  './js/ics201.js?v=2026-09-23-2',
+  './js/livestream.js?v=2026-09-23-2',
+  './js/app.js?v=2026-09-23-2',
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

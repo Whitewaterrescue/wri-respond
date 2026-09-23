@@ -56,7 +56,8 @@
         'esri/widgets/LayerList',
         'esri/widgets/Search',
         'esri/WebMap',
-        'esri/identity/IdentityManager'
+        'esri/identity/IdentityManager',
+        'esri/config'
       ], function () {});
     }).catch(function () {});
   };
@@ -316,8 +317,9 @@
         'esri/widgets/LayerList',
         'esri/widgets/Search',
         'esri/WebMap',
-        'esri/identity/IdentityManager'
-      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap, esriId) {
+        'esri/identity/IdentityManager',
+        'esri/config'
+      ], function (EsriMap, MapView, FeatureLayer, Locate, LayerList, Search, WebMap, esriId, esriConfig) {
         var inc = (window.APP && APP.incident) || {};
         var reconUrl = layerBaseUrl(inc, 'recon');
         var resourceUrl = layerBaseUrl(inc, 'resource');
@@ -329,6 +331,18 @@
         // the public gateway map with no token at all.
         var auth = window.ArcgisAuth && ArcgisAuth.get();
         var staffMap = !!(auth && stableMapId);
+
+        // Identity follows sign-in state, and this has to be set BEFORE any layer
+        // request goes out. Signed out, the SDK must never consult IdentityManager:
+        // a single org-secured layer on the public map otherwise 403s and the SDK
+        // answers by popping its OWN sign-in dialog — which is what responders saw
+        // on 2026-09-23 (WRI_LPO_ResponseSite 2024 was shared as an item but not as
+        // a service). With useIdentity off, such a layer just fails to draw, which
+        // is the right outcome for a token-free public app, and the gateway is
+        // immune to the next secured layer someone adds rather than only to that
+        // one. The staff path turns it back on so registerToken is honoured.
+        try { esriConfig.request.useIdentity = !!staffMap; } catch (e) {}
+
         if (staffMap) {
           // Hand the user's token to the SDK for this portal + its services, so
           // the org-private map and its layers load as that person.
@@ -437,6 +451,16 @@
           // On a webmap, wire attachment-aware popups onto any feature layer
           // that supports attachments (anonymous fetch — no token, no proxy).
           if (usingWebMap && map.allLayers) {
+            // Name anything that fails to load. With useIdentity off a secured
+            // layer fails silently, which is the right behaviour for responders
+            // but leaves no trace for us — this is how the next
+            // shared-as-an-item-but-not-as-a-service layer gets noticed.
+            map.allLayers.forEach(function (lyr) {
+              lyr.when(null, function (err) {
+                console.warn('[gateway] layer did not load: ' + (lyr.title || lyr.id) +
+                             ' — ' + ((err && err.message) || err));
+              });
+            });
             map.allLayers.forEach(function (lyr) {
               if (lyr.type !== 'feature') return;
               lyr.when(function () {
