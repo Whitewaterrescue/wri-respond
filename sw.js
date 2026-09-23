@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-09-23-6';
+var CACHE_VERSION = '2026-09-23-7';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -43,29 +43,29 @@ var PRECACHE = [
   './index.html',
   './manifest.json',
   // ?v= must match the stamps in index.html — that's the URL the page asks for.
-  './css/app.css?v=2026-09-23-6',
-  './js/config.js?v=2026-09-23-6',
-  './js/obstypes.js?v=2026-09-23-6',
-  './js/api.js?v=2026-09-23-6',
-  './js/session.js?v=2026-09-23-6',
-  './js/outbox.js?v=2026-09-23-6',
-  './js/screens.js?v=2026-09-23-6',
-  './js/arcgis-auth.js?v=2026-09-23-6',
-  './js/map.js?v=2026-09-23-6',
-  './js/maptools.js?v=2026-09-23-6',
+  './css/app.css?v=2026-09-23-7',
+  './js/config.js?v=2026-09-23-7',
+  './js/obstypes.js?v=2026-09-23-7',
+  './js/api.js?v=2026-09-23-7',
+  './js/session.js?v=2026-09-23-7',
+  './js/outbox.js?v=2026-09-23-7',
+  './js/screens.js?v=2026-09-23-7',
+  './js/arcgis-auth.js?v=2026-09-23-7',
+  './js/map.js?v=2026-09-23-7',
+  './js/maptools.js?v=2026-09-23-7',
   // ES modules imported on demand by the map tools. maptools.js inherits its own ?v=
   // and appends it to these imports, so the stamps MUST match -- caches.match() here is
   // exact (no ignoreSearch), and an unstamped key would simply never be hit.
-  './js/lib/gradient.js?v=2026-09-23-6',
-  './js/lib/elevation.js?v=2026-09-23-6',
-  './js/lib/trace-engine.js?v=2026-09-23-6',
-  './js/recon.js?v=2026-09-23-6',
-  './js/resources.js?v=2026-09-23-6',
-  './js/requests.js?v=2026-09-23-6',
-  './js/sitstat.js?v=2026-09-23-6',
-  './js/ics201.js?v=2026-09-23-6',
-  './js/livestream.js?v=2026-09-23-6',
-  './js/app.js?v=2026-09-23-6',
+  './js/lib/gradient.js?v=2026-09-23-7',
+  './js/lib/elevation.js?v=2026-09-23-7',
+  './js/lib/trace-engine.js?v=2026-09-23-7',
+  './js/recon.js?v=2026-09-23-7',
+  './js/resources.js?v=2026-09-23-7',
+  './js/requests.js?v=2026-09-23-7',
+  './js/sitstat.js?v=2026-09-23-7',
+  './js/ics201.js?v=2026-09-23-7',
+  './js/livestream.js?v=2026-09-23-7',
+  './js/app.js?v=2026-09-23-7',
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',

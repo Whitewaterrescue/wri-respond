@@ -464,6 +464,10 @@
           notes.push('Open-water check timed out (USGS slow) — traced as a river.');
           mode = { mode: 'river' };
         }
+        // engine >=1.12.1 answers a FAILED National Map probe the same way rather than
+        // throwing (hydro.nationalmap.gov served 504s for hours on 2026-09-23). Say so:
+        // a lake click silently traced as a river would otherwise look authoritative.
+        if (mode && mode.probe_failed) notes.push(mode.probe_failed);
         // Open water is a different model entirely. Say so rather than return nothing.
         if (mode && mode.mode && mode.mode !== 'river') {
           if (gfx) gfx.removeAll();
