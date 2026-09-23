@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-09-22-2">
+  <link rel="stylesheet" href="css/app.css?v=2026-09-23-1">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -351,6 +351,13 @@
         <div id="mapDiv"></div>
       </div>
 
+      <!-- ICS 201 TAB — js/ics201.js. Mounted on first open and then kept, so
+           unsaved briefing edits survive a tab switch (see that file). -->
+      <div class="tab-pane" id="tab-ics201">
+        <div class="ics201-note" id="ics201Note" style="display:none;"></div>
+        <div class="ics201-frame" id="ics201FrameHost"></div>
+      </div>
+
       <!-- LIVE STREAM TAB (Nova) — js/livestream.js. The frame is created on tap
            only and destroyed ~3s after you leave; see that file for why. -->
       <div class="tab-pane" id="tab-live">
@@ -529,6 +536,10 @@
         <span class="tab-icon">&#128506;</span>
         Map
       </button>
+      <button onclick="switchTab('ics201')" id="tabBtn-ics201">
+        <span class="tab-icon">&#128203;</span>
+        201
+      </button>
       <button onclick="switchTab('live')" id="tabBtn-live">
         <span class="tab-icon">&#128250;</span>
         Live
@@ -597,20 +608,21 @@
   </div>
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
-  <script src="js/config.js?v=2026-09-22-2"></script>
-  <script src="js/obstypes.js?v=2026-09-22-2"></script>
-  <script src="js/api.js?v=2026-09-22-2"></script>
-  <script src="js/session.js?v=2026-09-22-2"></script>
-  <script src="js/outbox.js?v=2026-09-22-2"></script>
-  <script src="js/screens.js?v=2026-09-22-2"></script>
-  <script src="js/arcgis-auth.js?v=2026-09-22-2"></script>
-  <script src="js/map.js?v=2026-09-22-2"></script>
-  <script src="js/recon.js?v=2026-09-22-2"></script>
-  <script src="js/resources.js?v=2026-09-22-2"></script>
-  <script src="js/requests.js?v=2026-09-22-2"></script>
-  <script src="js/sitstat.js?v=2026-09-22-2"></script>
-  <script src="js/livestream.js?v=2026-09-22-2"></script>
-  <script src="js/app.js?v=2026-09-22-2"></script>
+  <script src="js/config.js?v=2026-09-23-1"></script>
+  <script src="js/obstypes.js?v=2026-09-23-1"></script>
+  <script src="js/api.js?v=2026-09-23-1"></script>
+  <script src="js/session.js?v=2026-09-23-1"></script>
+  <script src="js/outbox.js?v=2026-09-23-1"></script>
+  <script src="js/screens.js?v=2026-09-23-1"></script>
+  <script src="js/arcgis-auth.js?v=2026-09-23-1"></script>
+  <script src="js/map.js?v=2026-09-23-1"></script>
+  <script src="js/recon.js?v=2026-09-23-1"></script>
+  <script src="js/resources.js?v=2026-09-23-1"></script>
+  <script src="js/requests.js?v=2026-09-23-1"></script>
+  <script src="js/sitstat.js?v=2026-09-23-1"></script>
+  <script src="js/ics201.js?v=2026-09-23-1"></script>
+  <script src="js/livestream.js?v=2026-09-23-1"></script>
+  <script src="js/app.js?v=2026-09-23-1"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.

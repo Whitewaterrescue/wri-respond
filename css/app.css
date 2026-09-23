@@ -461,6 +461,24 @@
     }
 
     /* ═══════════════════════════════════════════════════════
+       ICS 201 TAB — js/ics201.js
+       ═══════════════════════════════════════════════════════ */
+    #tab-ics201 { overflow: hidden; display: flex; flex-direction: column; }
+    #tab-ics201.active { display: flex; }
+
+    .ics201-note {
+      padding: 14px 18px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* min-height:0 or the flex child refuses to shrink and the frame overflows */
+    .ics201-frame { flex: 1; min-height: 0; }
+    .ics201-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+    /* ═══════════════════════════════════════════════════════
        LIVE STREAM TAB (Nova) — js/livestream.js
        ═══════════════════════════════════════════════════════ */
     #tab-live { overflow: hidden; }

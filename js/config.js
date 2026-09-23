@@ -14,6 +14,13 @@ self.CONFIG = {
   // satellite + recon/resource views. The API's ?api=incident value wins if set.
   GATEWAY_WEBMAP_ID: 'e6c53a5f666c459b81953d01331df165',
 
+  // ICS 201 v2 generator (201 tab) — one route on the Ops Dashboard GAS project.
+  // Deployment AKfycbytFBip… is the live one (@285, confirmed via clasp deployments
+  // and corroborated by wri-safety-dashboard + the ExB app-1 widgets). NOTE: an
+  // unknown ?page value silently serves the Ops Dashboard kanban board rather than
+  // erroring, so a typo here looks like the wrong app, not a 404.
+  ICS201_URL: 'https://script.google.com/macros/s/AKfycbytFBip-cbr-ohGpVGFoFBQ3spMLCswlbP26B4Syw0rrDs_x2hO4FqpdFzR6Mb3h9Ke/exec?page=v2-ics201',
+
   // Nova live stream (Live tab). Same workspace the Field App's Live Stream
   // page and the BNSF/WRI/MT-WY ICP viewers embed — hardcoded there too, so a
   // workspace change is a deliberate edit in each. Nova renders anonymously and

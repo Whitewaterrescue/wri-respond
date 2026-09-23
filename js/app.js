@@ -48,6 +48,10 @@
         APP.mapInited = true;
         initMainMap();       // lazy-loads the ArcGIS SDK on first open
       }
+    } else if (name === 'ics201') {
+      // Mounts the 201 on first open and then keeps it — unsaved briefing edits
+      // must survive a tab switch (js/ics201.js).
+      if (window.initIcs201Tab) initIcs201Tab();
     } else if (name === 'live') {
       // Never mounts the stream — Nova loads on tap only (js/livestream.js).
       if (window.initLiveTab) initLiveTab();
