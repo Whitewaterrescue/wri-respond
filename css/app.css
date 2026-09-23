@@ -463,7 +463,10 @@
     /* ═══════════════════════════════════════════════════════
        MAP TOOLS — js/maptools.js
        ═══════════════════════════════════════════════════════ */
-    .maptool-bar { display: flex; gap: 6px; }
+    /* Wraps rather than overflowing: the bar sits bottom-right next to Esri's own
+       zoom controls, and a phone has no room for three buttons on one row. */
+    .maptool-bar { display: flex; gap: 6px; flex-wrap: wrap;
+                   justify-content: flex-end; max-width: 68vw; }
     .maptool-bar button {
       background: var(--panel);
       border: 1px solid var(--border);
@@ -519,6 +522,45 @@
                border-top: 1px solid var(--border); padding-top: 8px; }
     .dg-hint { color: var(--text-muted); line-height: 1.45; }
     .dg-err { color: var(--danger); line-height: 1.45; }
+
+    /* -- resource search (WRRL) -- js/maptools.js ---------------------- */
+    /* Phone-first: 44px touch targets, one column, and the contact line is the row that
+       actually matters during a response -- it stays visible without an expand tap. */
+    .rs-ctl { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+    .rs-origin { color: var(--text-muted); font-size: 0.78rem; line-height: 1.4; }
+    .rs-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .rs-chip {
+      flex: 1 1 auto; min-width: 62px; min-height: 38px;
+      background: var(--panel-2, rgba(255,255,255,0.05));
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 0.8rem; font-weight: 600; cursor: pointer;
+    }
+    .rs-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .rs-in {
+      width: 100%; min-height: 40px; padding: 8px 10px;
+      background: var(--panel-2, rgba(255,255,255,0.05));
+      border: 1px solid var(--border); border-radius: 6px;
+      color: var(--text); font-size: 0.85rem;
+    }
+    .rs-chk { display: flex; align-items: center; gap: 8px;
+              color: var(--text-muted); font-size: 0.8rem; }
+    .rs-chk input { width: 18px; height: 18px; }
+    .rs-go { min-height: 42px; }
+    .rs-status { color: var(--text-muted); font-size: 0.78rem; margin: 6px 0 8px; }
+    .rs-list { display: flex; flex-direction: column; gap: 10px; }
+    .rs-item { padding: 9px 10px; border: 1px solid var(--border); border-radius: 7px;
+               background: rgba(255,255,255,0.03); }
+    .rs-name { font-weight: 700; color: var(--text-bright); font-size: 0.86rem; }
+    .rs-name small { font-weight: 500; color: var(--text-muted); }
+    .rs-sub { color: var(--text-muted); font-size: 0.76rem; margin-top: 1px; }
+    .rs-cap { font-size: 0.78rem; margin-top: 4px; }
+    .rs-dist { color: var(--text-muted); font-size: 0.74rem; margin-top: 4px; }
+    .rs-loc { color: var(--text-muted); font-size: 0.74rem; }
+    .rs-loc em { font-style: normal; opacity: 0.75; }
+    .rs-contact { font-size: 0.8rem; margin-top: 5px; }
+    .rs-contact a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .rs-links { margin-top: 5px; }
+    .rs-links a { color: var(--accent); font-size: 0.76rem; text-decoration: none; }
 
     /* ═══════════════════════════════════════════════════════
        ICS 201 TAB — js/ics201.js

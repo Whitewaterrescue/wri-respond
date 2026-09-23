@@ -437,7 +437,8 @@
           // Analysis tools share THIS view rather than each carrying its own map.
           if (window.initMapTools) {
             initMapTools(mapView, { GraphicsLayer: GraphicsLayer, Graphic: Graphic, Point: Point,
-                                    Polyline: Polyline, reactiveUtils: reactiveUtils });
+                                    Polyline: Polyline, reactiveUtils: reactiveUtils,
+                                    FeatureLayer: FeatureLayer });
           }
 
           // Deferred: constructing Search immediately fetches world-geocoder
