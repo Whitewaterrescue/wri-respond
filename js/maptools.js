@@ -554,7 +554,7 @@
   var R_EARTH_MI = 3958.8;
 
   var rs = { origin: null, radius: 50, kind: '', text: '', trailers: false,
-             rows: [], run: 0, layer: null, kinds: null };
+             rows: [], run: 0, layer: null, kinds: null, kids: {}, open: null };
 
   function haversineMi(aLat, aLon, bLat, bLon) {
     var rad = Math.PI / 180;
@@ -650,9 +650,15 @@
     if (!rs.rows.length) return h;
     h += '<div class="rs-list">';
     rs.rows.forEach(function (r) {
-      h += '<div class="rs-item">' +
+      // A trailer is one WRRL row whose children share its wrrl_group_id. Listing them
+      // inline is what makes "the whole trailer" and "one item on a trailer" the same
+      // search -- without it the row says "31 items" and gives you no way to see them.
+      var expandable = r.isParent && r.childCount > 0;
+      h += '<div class="rs-item"' + (expandable ? ' data-group="' + esc(r.wrrlId) + '"' : '') + '>' +
            '<div class="rs-name">' + esc(r.name || r.kindType || r.kind || 'Resource') +
-           (r.isParent && r.childCount ? ' <small>trailer · ' + r.childCount + ' items</small>' : '') +
+           (expandable ? ' <button type="button" class="rs-kids" data-group="' + esc(r.wrrlId) +
+              '">' + r.childCount + ' items ' + (rs.open === r.wrrlId ? '&#9652;' : '&#9662;') +
+              '</button>' : '') +
            '</div>' +
            '<div class="rs-sub">' + esc(r.org) +
              (r.kindType ? ' · ' + esc(r.kindType) : '') + '</div>';
@@ -678,6 +684,23 @@
         }
         h += '</div>';
       }
+      if (expandable && rs.open === r.wrrlId) {
+        var kids = rs.kids[r.wrrlId];
+        h += '<div class="rs-kidlist">';
+        if (!kids) {
+          h += '<div class="rs-sub">Loading contents&hellip;</div>';
+        } else if (!kids.length) {
+          h += '<div class="rs-sub">No itemised contents recorded for this trailer.</div>';
+        } else {
+          kids.forEach(function (k) {
+            var cap = rsCapability(k);
+            h += '<div class="rs-kid">' + esc(k.name || k.kindType || k.kind || 'Item') +
+                 (k.spec ? ' <small>' + esc(k.spec) + '</small>' : '') +
+                 (cap ? '<div class="rs-sub">' + esc(cap) + '</div>' : '') + '</div>';
+          });
+        }
+        h += '</div>';
+      }
       h += '<div class="rs-links"><a target="_blank" rel="noopener" href="' +
            'https://www.google.com/maps/dir/?api=1&destination=' + r.lat + ',' + r.lon +
            (rs.origin ? '&origin=' + rs.origin.lat + ',' + rs.origin.lon : '') +
@@ -700,6 +723,7 @@
   function rsSearch() {
     if (!rs.origin) { rsSetResults('Tap the map to set a search origin.'); return; }
     var run = ++rs.run;
+    rs.open = null;                 // a new result set must not inherit an expanded trailer
     var b = bodyEl(); if (b) b.dataset.ready = '';
     rsSetResults('Searching…', true);
     var fl = rsLayer();
@@ -778,8 +802,39 @@
         if (rs.origin) rsSearch();
         return;
       }
+      var kb = e.target.closest ? e.target.closest('.rs-kids') : null;
+      if (kb) { rsToggleKids(kb.dataset.group); return; }
       if (e.target.id === 'rsGo') { rsSync(); rsSearch(); }
     });
+  }
+
+  // Children are keyed by the PARENT's wrrl_id in wrrl_group_id, and the parent is in
+  // that group too -- exclude it or the trailer lists itself as its own contents.
+  // WRRL_ID is not unique across the file, so this can only ever be a best-effort group
+  // lookup; it is what the ExB widget does and it is right far more often than not.
+  function rsToggleKids(gid) {
+    if (rs.open === gid) { rs.open = null; rsSetResults(rsStatus()); return; }
+    rs.open = gid;
+    rsSetResults(rsStatus());
+    if (rs.kids[gid]) return;
+    var fl = rsLayer();
+    var q = fl.createQuery();
+    q.where = 'wrrl_group_id = ' + sq(gid) + ' AND wrrl_id <> ' + sq(gid);
+    q.outFields = RS_FIELDS;
+    q.returnGeometry = true;
+    q.outSpatialReference = { wkid: 4326 };
+    q.num = 500;
+    fl.queryFeatures(q).then(function (fs) {
+      rs.kids[gid] = fs.features.map(function (f) { return rsRow(f, rs.origin || { lat: 0, lon: 0 }); });
+      if (rs.open === gid) rsSetResults(rsStatus());
+    }).catch(function () {
+      rs.kids[gid] = [];
+      if (rs.open === gid) rsSetResults(rsStatus());
+    });
+  }
+
+  function rsStatus() {
+    return rs.rows.length + ' resource(s) within ' + rs.radius + ' mi';
   }
 
   function rsSync() {

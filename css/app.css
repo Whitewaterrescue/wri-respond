@@ -559,6 +559,15 @@
     .rs-loc em { font-style: normal; opacity: 0.75; }
     .rs-contact { font-size: 0.8rem; margin-top: 5px; }
     .rs-contact a { color: var(--accent); font-weight: 600; text-decoration: none; }
+    .rs-kids {
+      background: none; border: 1px solid var(--border); border-radius: 5px;
+      color: var(--text-muted); font: 600 0.72rem var(--font);
+      padding: 3px 7px; margin-left: 4px; cursor: pointer; white-space: nowrap;
+    }
+    .rs-kidlist { margin: 7px 0 2px; padding-left: 9px;
+                  border-left: 2px solid var(--border); }
+    .rs-kid { font-size: 0.78rem; padding: 3px 0; }
+    .rs-kid small { color: var(--text-muted); font-weight: 400; }
     .rs-links { margin-top: 5px; }
     .rs-links a { color: var(--accent); font-size: 0.76rem; text-decoration: none; }
 
