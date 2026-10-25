@@ -214,6 +214,21 @@
 
   var INC_SNAP_KEY = 'wri_incident_snapshot';
 
+  // Incident pin (api.js): a snapshot of another incident must not boot this one.
+  function snapFitsPin(inc) {
+    var pin = (window.incidentPin && incidentPin()) || '';
+    if (!pin || !inc) return true;
+    var p = pin.toLowerCase();
+    return String(inc.incident_id || '').toLowerCase() === p || String(inc.recon_project || '').toLowerCase() === p;
+  }
+  // A remembered pin whose incident has closed falls back to the primary; a pin
+  // from the link the user just opened shows "closed" instead.
+  function staleRememberedPin(incident) {
+    if (!incident || !incident.not_open || (window.incidentPinFromUrl && incidentPinFromUrl())) return false;
+    if (window.clearIncidentPin) clearIncidentPin();
+    return true;
+  }
+
   // Pre-fired session revalidation (see DOMContentLoaded): lets the session
   // GAS leg overlap the incident GAS leg instead of running after it.
   var earlySession = null;
@@ -293,11 +308,16 @@
     var snap = null;
     try { snap = JSON.parse(localStorage.getItem(INC_SNAP_KEY)); } catch (e) {}
     var snapAgeMs = (snap && snap.fetched_at) ? (Date.now() - new Date(snap.fetched_at).getTime()) : Infinity;
+    if (snap && snap.incident && !snapFitsPin(snap.incident)) snap = null;
     if (snap && snap.incident && snap.incident.active !== false && snapAgeMs < 12 * 3600 * 1000) {
       bootOnce(snap.incident, null);
     }
 
     apiGet('incident')
+      .then(function (incident) {
+        if (staleRememberedPin(incident)) return apiGet('incident');
+        return incident;
+      })
       .then(function (incident) {
         try {
           localStorage.setItem(INC_SNAP_KEY, JSON.stringify({
