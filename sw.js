@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-10-25-gate';
+var CACHE_VERSION = '2026-10-26-sw';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -42,30 +42,32 @@ var PRECACHE = [
   './',
   './index.html',
   './manifest.json',
-  // ?v= must match the stamps in index.html — that's the URL the page asks for.
-  './css/app.css?v=2026-10-23-1',
-  './js/config.js?v=2026-10-23-1',
-  './js/obstypes.js?v=2026-10-23-1',
-  './js/api.js?v=2026-10-23-1',
-  './js/session.js?v=2026-10-23-1',
-  './js/outbox.js?v=2026-10-23-1',
-  './js/screens.js?v=2026-10-23-1',
-  './js/arcgis-auth.js?v=2026-10-23-1',
-  './js/map.js?v=2026-10-23-1',
-  './js/maptools.js?v=2026-10-23-1',
+  // ?v= must match the stamps in index.html (= CACHE_VERSION) — that's the URL the page asks for.
+  './css/app.css?v=' + CACHE_VERSION,
+  './js/config.js?v=' + CACHE_VERSION,
+  './js/obstypes.js?v=' + CACHE_VERSION,
+  './js/api.js?v=' + CACHE_VERSION,
+  './js/session.js?v=' + CACHE_VERSION,
+  './js/outbox.js?v=' + CACHE_VERSION,
+  './js/screens.js?v=' + CACHE_VERSION,
+  './js/arcgis-auth.js?v=' + CACHE_VERSION,
+  './js/map.js?v=' + CACHE_VERSION,
+  './js/maptools.js?v=' + CACHE_VERSION,
   // ES modules imported on demand by the map tools. maptools.js inherits its own ?v=
   // and appends it to these imports, so the stamps MUST match -- caches.match() here is
   // exact (no ignoreSearch), and an unstamped key would simply never be hit.
-  './js/lib/gradient.js?v=2026-10-23-1',
-  './js/lib/elevation.js?v=2026-10-23-1',
-  './js/lib/trace-engine.js?v=2026-10-23-1',
-  './js/recon.js?v=2026-10-23-1',
-  './js/resources.js?v=2026-10-23-1',
-  './js/requests.js?v=2026-10-23-1',
-  './js/sitstat.js?v=2026-10-23-1',
-  './js/ics201.js?v=2026-10-23-1',
-  './js/livestream.js?v=2026-10-23-1',
-  './js/app.js?v=2026-10-23-1',
+  './js/lib/gradient.js?v=' + CACHE_VERSION,
+  './js/lib/elevation.js?v=' + CACHE_VERSION,
+  './js/lib/trace-engine.js?v=' + CACHE_VERSION,
+  './js/recon.js?v=' + CACHE_VERSION,
+  './js/resources.js?v=' + CACHE_VERSION,
+  './js/requests.js?v=' + CACHE_VERSION,
+  './js/sitstat.js?v=' + CACHE_VERSION,
+  './js/ics201.js?v=' + CACHE_VERSION,
+  './js/livestream.js?v=' + CACHE_VERSION,
+  './js/app.js?v=' + CACHE_VERSION,
+  // The shared incident gate (served by the Field App, same origin)
+  '/wri-field-app/incident-gate.js',
   './assets/wri-logo.png',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
@@ -111,10 +113,10 @@ self.addEventListener('activate', function (event) {
     caches.keys().then(function (names) {
       return Promise.all(names
         .filter(function (n) {
-          // Old SDK buckets die on SDK upgrade; the current one survives
-          // shell CACHE_VERSION bumps.
-          if (n.indexOf('wri-arcgis-') === 0) return n !== ARCGIS_CACHE;
-          return n !== CACHE_NAME;
+          // Only OUR old shell caches. Cache Storage is shared by every app on
+          // whitewaterrescue.github.io (Field App, check-in, Recon...), so
+          // anything else -- including other SDK buckets -- is not ours to delete.
+          return n.indexOf('wri-respond-') === 0 && n !== CACHE_NAME;
         })
         .map(function (n) { return caches.delete(n); }));
     }).then(function () { return self.clients.claim(); })
