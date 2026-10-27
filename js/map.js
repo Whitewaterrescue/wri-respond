@@ -211,6 +211,50 @@
   }
 
   // Purge KML before load: watch the layer collection as the web map fills it.
+  /* The public gateway map follows the responder's incident (2026-10-27).
+     The saved web map carries the filters of the last FULLY activated incident;
+     with several incidents open each responder sees their own: the session's
+     incident (check-in) or the one picked / pinned with ?incident=. Same field
+     rules as the activation runner (refresh_incident_map.py PROJECT_FIELDS):
+     incident_id-style fields take the incident id, project-style fields the
+     project key. Layers saved without a filter are scoped by service. */
+  var PROJECT_FILTER_RE = /\b(ProjectName|project_name|incident_id|IncidentID|project|Project)(\s*(?:=|LIKE)\s*)'([^']*)'/gi;
+  var SCOPE_BY_SERVICE = [
+    { re: /\/WRI_Recon_v3_public\//i, field: 'project_name' },
+    { re: /\/WRI_Incident_360_Panoramas_pub\//i, field: 'project_name' },
+    { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' }
+  ];
+  function scopeLayerToIncident(lyr, inc) {
+    var id = String(inc.incident_id || ''), key = String(inc.project_key || inc.recon_project || '');
+    if (!id && !key) return;
+    var valFor = function (field) { return /^(incident_id|IncidentID)$/i.test(field) ? id : key; };
+    var de = lyr.definitionExpression || '';
+    var nd = '';
+    if (de && PROJECT_FILTER_RE.test(de)) {
+      PROJECT_FILTER_RE.lastIndex = 0;
+      nd = de.replace(PROJECT_FILTER_RE, function (_m, field, op) { return field + op + "'" + sqlEscape(valFor(field)) + "'"; });
+    } else {
+      var url = String(lyr.url || '') + '/';
+      SCOPE_BY_SERVICE.some(function (s) {
+        if (!s.re.test(url)) return false;
+        var v = valFor(s.field);
+        if (v) nd = s.field + " = '" + sqlEscape(v) + "'";
+        return true;
+      });
+    }
+    PROJECT_FILTER_RE.lastIndex = 0;
+    if (nd && nd !== de) { try { lyr.definitionExpression = nd; } catch (e) {} }
+  }
+  function scopeMapToIncident(map) {
+    var inc = (window.APP && APP.incident) || {};
+    if (!map || !map.allLayers) return;
+    map.allLayers.forEach(function (lyr) {
+      if (lyr.type !== 'feature') return;
+      lyr.when(function () { scopeLayerToIncident(lyr, inc); }, function () {});
+    });
+  }
+  window.wriScopeMapToIncident = scopeMapToIncident;   // test handle
+
   function purgeKmlOnPhone(map) {
     if (!isPhone() || !map.allLayers) return;
     function drop(lyr) {
@@ -504,6 +548,8 @@
           layerToggle.appendChild(layerPanel);
           mapView.ui.add(layerToggle, 'top-left');
 
+          if (usingWebMap) scopeMapToIncident(map);
+
           // On a webmap, wire attachment-aware popups onto any feature layer
           // that supports attachments (anonymous fetch — no token, no proxy).
           if (usingWebMap && map.allLayers) {
@@ -571,6 +617,7 @@
         reconMiniView = new MapView(viewProps);
         window._reconView = reconMiniView; // headless test handle (no token, public map)
         reconMiniView.when(function () {
+          if (webmapId) scopeMapToIncident(viewProps.map);
           window.reconMapReady = true; // signals tap-to-place is armed (tests key on this)
           // If GPS landed before the picker finished loading, draw it now.
           if (window.reconPoint) setReconGraphic(window.reconPoint.lat, window.reconPoint.lon);
