@@ -205,6 +205,12 @@
 
     // ── New user ──
     hideLoading();
+    // Each open incident has its own access code: one verified for another
+    // incident (the phone switched incidents) is asked for again.
+    try {
+      var pinInc = localStorage.getItem('wri_respond_pin_inc');
+      if (pinInc !== null && APP.incident && String(APP.incident.incident_id || '') !== pinInc) Session.pinOk.set(false);
+    } catch (e) {}
     if (APP.incident && APP.incident.require_pin && !Session.pinOk.get()) {
       showPinGate();
     } else {
