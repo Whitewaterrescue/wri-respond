@@ -192,7 +192,11 @@
       .then(function () {
         pinSubmitting = false;
         window._gwPin = pin;
-        try { localStorage.setItem(PIN_STORE_KEY, pin); } catch (e) {}
+        try {
+          localStorage.setItem(PIN_STORE_KEY, pin);
+          // each open incident has its own access code (2026-10-27): remember which one this is for
+          localStorage.setItem(PIN_STORE_KEY + '_inc', String((window.APP && APP.incident && APP.incident.incident_id) || ''));
+        } catch (e) {}
         Session.pinOk.set(true);
         errEl.textContent = '';
         if (drainPinMode) {
