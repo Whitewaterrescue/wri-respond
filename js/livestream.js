@@ -1,4 +1,6 @@
-/* WRI Respond — Live Stream tab (Nova).
+/* WRI Respond — Live Stream tab: Nova, and the WRI drones (drone.whitewaterrescue.com/live,
+ * watch only: the drone page asks for the incident's Gateway PIN and never shows crew controls
+ * here; we hand it the incident this device is on by postMessage).
  *
  * Same Nova workspace the Field App's Live Stream page (page_13) and the three
  * ICP viewers carry. Nova serves `Content-Security-Policy: frame-ancestors *`
@@ -17,6 +19,7 @@
 
   var TEARDOWN_MS = (window.CONFIG && CONFIG.LIVE_TEARDOWN_MS) || 3000;
   var frame = null;
+  var kind = 'nova';   // which feed the player shows: 'nova' | 'drones'
   var teardownTimer = null;
 
   function byId(id) { return document.getElementById(id); }
@@ -30,9 +33,10 @@
     if (teardownTimer) { clearTimeout(teardownTimer); teardownTimer = null; }
   }
 
-  window.mountLive = function () {
+  window.mountLive = function (which) {
     cancelTeardown();
     if (frame) return;
+    kind = which === 'drones' ? 'drones' : 'nova';
     var host = byId('liveFrameHost');
     var player = byId('livePlayer');
     var launcher = byId('liveLauncher');
@@ -40,11 +44,14 @@
     // Fresh element per open — reusing one leaves the stream's own history
     // entries behind and the back button stops matching the visible state.
     frame = document.createElement('iframe');
-    frame.title = 'Nova live stream';
+    frame.title = kind === 'drones' ? 'WRI drone video' : 'Nova live stream';
     frame.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
     frame.setAttribute('allowfullscreen', '');
     frame.referrerPolicy = 'no-referrer-when-downgrade';
-    frame.src = CONFIG.NOVA_LIVE_URL;
+    frame.src = kind === 'drones' ? CONFIG.DRONE_LIVE_URL : CONFIG.NOVA_LIVE_URL;
+    var title = byId('liveBarTitle'), open2 = byId('liveOpenBtn2');
+    if (title) title.textContent = kind === 'drones' ? 'WRI drones' : 'Nova Live Stream';
+    if (open2) open2.style.display = kind === 'drones' ? 'none' : '';
     host.appendChild(frame);
     player.classList.add('on');
     launcher.style.display = 'none';
@@ -81,8 +88,10 @@
     cancelTeardown();
     var off = byId('liveOffline');
     if (off) off.style.display = (navigator.onLine === false) ? '' : 'none';
-    var watch = byId('liveWatchBtn');
-    if (watch) watch.disabled = (navigator.onLine === false);
+    ['liveWatchBtn', 'droneWatchBtn'].forEach(function (id) {
+      var b = byId(id);
+      if (b) b.disabled = (navigator.onLine === false);
+    });
   };
 
   /* The Nova URL lives in config.js only — the two "Open" anchors get it here
@@ -99,6 +108,14 @@
   } else {
     wireOpenLinks();
   }
+
+  // the drone page is ready: tell it which incident this device is on (id, project name, or '' = primary)
+  window.addEventListener('message', function (e) {
+    if (!frame || kind !== 'drones' || e.origin !== CONFIG.DRONE_LIVE_ORIGIN || !e.data || e.data.type !== 'wri-live-ready') return;
+    var inc = '';
+    try { inc = window.incidentPin ? window.incidentPin() : ''; } catch (x) {}
+    frame.contentWindow.postMessage({ type: 'wri-live-auth', incident: String(inc || '') }, CONFIG.DRONE_LIVE_ORIGIN);
+  });
 
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'hidden') window.scheduleLiveTeardown();
