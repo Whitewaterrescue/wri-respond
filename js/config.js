@@ -26,6 +26,10 @@ self.CONFIG = {
   // workspace change is a deliberate edit in each. Nova renders anonymously and
   // serves `frame-ancestors *`, so no token and no sign-in are involved.
   NOVA_LIVE_URL: 'https://app.mapnova.com/live?workspaceId=c9c97b46-4d56-4869-89ed-fba4ed6467de',
+  // WRI drones (drone.whitewaterrescue.com): watch only here. The frame asks for the incident's
+  // Gateway PIN once per device; start/stop + camera are WRI crew only (crew PIN, Field App)
+  DRONE_LIVE_URL: 'https://drone.whitewaterrescue.com/live?embed=1&view=1',
+  DRONE_LIVE_ORIGIN: 'https://drone.whitewaterrescue.com',
   LIVE_TEARDOWN_MS: 3000,   // hidden/left this long -> unload the stream
 
   // ArcGIS JS SDK (AMD build, lazy-loaded on first Map-tab open)
