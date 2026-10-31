@@ -1656,3 +1656,27 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    /* ═══════════════════════════════════════════════════════
+       ICS 214 FLOATING BUTTON + PANEL (js/ics214.js)
+       ═══════════════════════════════════════════════════════ */
+    .wri-214-fab { position: fixed; left: 12px; bottom: calc(var(--tab-height) + 20px + env(safe-area-inset-bottom, 0px)); z-index: 500;
+      width: 54px; height: 54px; border-radius: 50%; border: 2px solid #fff; background: #EC2329; color: #fff;
+      font: 800 16px/1 system-ui, sans-serif; letter-spacing: .5px; box-shadow: 0 3px 10px rgba(0,0,0,.45); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0; }
+    .wri-214-fab.ok { background: #16a34a; }
+    .wri-214-fab:active { transform: scale(.95); }
+    .wri-214-fab.hidden, .wri-214-panel.hidden, .wri-214-load.hidden { display: none; }
+    .wri-214-panel { position: fixed; z-index: 9500; top: 0; bottom: 0; right: 0; width: 440px; max-width: 100vw; background: #171919;
+      display: flex; flex-direction: column; box-shadow: 0 0 24px rgba(0,0,0,.6); }
+    @media (max-width: 700px) { .wri-214-panel { left: 0; width: auto; } }
+    .wri-214-bar { display: flex; align-items: center; gap: 10px; background: #3A3C3C; color: #fff; padding: 10px 12px;
+      padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+    .wri-214-bar b { flex: 1; font: 700 16px system-ui, sans-serif; }
+    .wri-214-x { background: #1c1e21; color: #fff; border: 1px solid #55595a; border-radius: 18px; padding: 7px 14px; font: 700 14px system-ui, sans-serif; cursor: pointer; }
+    .wri-214-body { position: relative; flex: 1; }
+    .wri-214-body iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #171919; }
+    .wri-214-load { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 10px; color: #d1d5db;
+      font: 600 14px system-ui, sans-serif; background: #171919; }
+    .wri-214-spin { width: 18px; height: 18px; border: 3px solid #55595a; border-top-color: #EC2329; border-radius: 50%; animation: spin .8s linear infinite; }
+    .wri-214-stale { flex-direction: column; gap: 14px; padding: 24px; text-align: center; line-height: 1.45; }
