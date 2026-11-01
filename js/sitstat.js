@@ -179,6 +179,13 @@
           });
           html += '</ul>';
         }
+        // The 201 map: a Drive JPG shared by link. Offline it just doesn't load (no image in the snapshot).
+        if (data.ics201.map_image_url) {
+          var mapView = 'https://drive.google.com/file/d/' + encodeURIComponent((/[?&]id=([\w-]+)/.exec(data.ics201.map_image_url) || [])[1] || '') + '/view';
+          html += '<div class="card-body" style="margin-top:8px;"><strong>Map:</strong>' +
+            '<a href="' + esc(mapView) + '" target="_blank" rel="noopener"><img src="' + esc(data.ics201.map_image_url) +
+            '" alt="ICS 201 map" loading="lazy" style="display:block;width:100%;height:auto;margin-top:4px;border-radius:6px;" onerror="this.style.display=\'none\'"></a></div>';
+        }
         html += '</div></div>';
       }
 
