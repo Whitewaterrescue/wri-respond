@@ -120,7 +120,10 @@
   };
 
   function renderSitStat(data, container) {
-    var html = '';
+    // Same box the printed ICS 201 carries on a drill/exercise
+    var html = data.drill ? '<div style="border:3px solid #c00;background:#fff;color:#c00;text-align:center;' +
+      'font:bold 15px Arial,sans-serif;letter-spacing:1px;padding:6px 8px;margin-bottom:16px;">' +
+      'EXERCISE / DRILL - THIS IS NOT A REAL INCIDENT</div>' : '';
     try {
 
       // ---------- Pending Count Banner ----------
@@ -187,6 +190,35 @@
             '" alt="ICS 201 map" loading="lazy" style="display:block;width:100%;height:auto;margin-top:4px;border-radius:6px;" onerror="this.style.display=\'none\'"></a></div>';
         }
         html += '</div></div>';
+      }
+
+      // ---------- ICS 205 Radio Communications Plan (Logistics) ----------
+      // One card per channel: a 5-column table overflows on mobile.
+      var cp = data.comms205;
+      if (cp && !cp.error && ((cp.channels || []).length || cp.specialInstructions)) {
+        html += '<div class="sitstat-section">';
+        html += '<div class="sitstat-section-header"><h3>ICS 205 - Communications Plan</h3></div>';
+        html += '<div class="card-body" style="font-size:0.78rem; margin-bottom:8px;">' + esc(cp.status || 'Draft');
+        if (cp.opFrom || cp.opTo) html += ' &mdash; Op period ' + esc(cp.opFrom || '') + (cp.opTo ? ' to ' + esc(cp.opTo) : '');
+        if (cp.preparedBy) html += ' &mdash; Prepared by ' + esc(cp.preparedBy);
+        html += '</div>';
+        (cp.channels || []).forEach(function (ch) {
+          var tone = function (f, t) { return [f, t ? '(' + t + ')' : ''].filter(Boolean).join(' '); };
+          var rx = tone(ch.RxFreq, ch.RxTone), tx = tone(ch.TxFreq, ch.TxTone);
+          var freq = (!tx || tx === rx) ? esc(rx) : 'RX ' + esc(rx || '-') + ' / TX ' + esc(tx);
+          html += '<div class="sitstat-card">';
+          html += '<div class="card-title">' + esc([ch['Channel#'], ch.ChannelName].filter(Boolean).join(' - ') || 'Channel') +
+            (ch['Zone/Group'] ? ' <span style="font-weight:400; color:var(--text-muted);">(' + esc(ch['Zone/Group']) + ')</span>' : '') + '</div>';
+          if (freq) html += '<div class="card-body"><strong>Freq:</strong> ' + freq + (ch.Mode ? ' &middot; Mode ' + esc(ch.Mode) : '') + '</div>';
+          if (ch.Function || ch.Assignment) html += '<div class="card-body">' + [ch.Function, ch.Assignment].filter(Boolean).map(esc).join(' &mdash; ') + '</div>';
+          if (ch.Remarks) html += '<div class="card-body" style="color:var(--text-muted);">' + esc(ch.Remarks) + '</div>';
+          html += '</div>';
+        });
+        if (cp.specialInstructions) {
+          html += '<div class="sitstat-card"><div class="card-body" style="white-space:pre-wrap;"><strong>Special instructions:</strong> ' + esc(cp.specialInstructions) + '</div></div>';
+        }
+        if (cp.pdfUrl) html += '<div class="card-body"><a href="' + esc(cp.pdfUrl) + '" target="_blank" rel="noopener">ICS 205 PDF</a></div>';
+        html += '</div>';
       }
 
       // ---------- Notifications ----------
