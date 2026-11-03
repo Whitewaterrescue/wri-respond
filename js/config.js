@@ -6,6 +6,8 @@ self.CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbx7p4-A8F6G_VedgHsw3RDJgwJK1GKVAFcvSah1JdjIdG5g7PAcvXhHRKHk_ULIhdL0KA/exec',
 
   // Public read-only view layers (create_public_views.py). No token needed.
+  // RECON_VIEW_URL is only the fallback: the gateway's ?api=incident recon_view_url
+  // (WRI.reconUrls().public, the P5 switch) wins.
   RECON_VIEW_URL:    'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/WRI_Recon_v3_public/FeatureServer/0',
   RESOURCE_VIEW_URL: 'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/WRI_Resource_Manager_public/FeatureServer/0',
 

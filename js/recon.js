@@ -198,7 +198,10 @@
       tf_status_raw: tfStatusEl ? tfStatusEl.value : '',
       latitude: window.reconPoint.lat,
       longitude: window.reconPoint.lon,
-      photos: reconPhotos.slice(0, MAX_PHOTOS)
+      photos: reconPhotos.slice(0, MAX_PHOTOS),
+      // One id per filled-in form (P5): a resubmit after a dropped connection
+      // finds the first write on the gateway instead of adding a duplicate.
+      recon_id: reconFormId()
     };
 
     apiPost('recon-submit', payload)
@@ -229,7 +232,17 @@
   /* ═══════════════════════════════════════════
      RESET
      ═══════════════════════════════════════════ */
+  var reconFormIdVal = '';
+  function reconFormId() {
+    if (!reconFormIdVal) {
+      reconFormIdVal = (self.crypto && crypto.randomUUID) ? crypto.randomUUID()
+        : 'rs-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+    }
+    return reconFormIdVal;
+  }
+
   window.resetReconForm = function () {
+    reconFormIdVal = '';
     document.getElementById('reconForm').classList.remove('hidden');
     document.getElementById('reconSuccess').classList.add('hidden');
     document.getElementById('reconForm').reset();
