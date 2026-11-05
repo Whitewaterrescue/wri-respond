@@ -220,7 +220,8 @@
      project key. Layers saved without a filter are scoped by service. */
   var PROJECT_FILTER_RE = /\b(ProjectName|project_name|incident_id|IncidentID|project|Project)(\s*(?:=|LIKE)\s*)'([^']*)'/gi;
   var SCOPE_BY_SERVICE = [
-    { re: /\/WRI_Recon_v3_public\//i, field: 'project_name' },
+    // P5 Recon move: the recon public view moves from WRI_Recon_v3_public to WRI_Incident_Ops_Recon_public
+    { re: /\/WRI_(Recon_v3|Incident_Ops_Recon)_public\//i, field: 'project_name' },
     { re: /\/WRI_Incident_360_Panoramas_pub\//i, field: 'project_name' },
     { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' }
   ];
