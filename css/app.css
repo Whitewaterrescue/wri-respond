@@ -388,6 +388,49 @@
     }
     .app-header .checkout-btn:hover { background: var(--accent); color: #fff; }
 
+    /* Help sheet (2026-11-10 G1) */
+    .app-header .help-btn {
+      width: 36px; min-width: 36px; height: 36px;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      font-size: 1rem; font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+    .overlay-card.help-card {
+      text-align: left;
+      max-width: 460px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 22px 18px;
+    }
+    .help-card h2 { text-align: center; }
+    .overlay-card .help-lead { color: var(--text); margin-bottom: 14px; font-size: 0.9rem; }
+    .help-sec { margin-bottom: 12px; }
+    .help-h { font-weight: 700; color: var(--text-bright); font-size: 0.9rem; margin-bottom: 2px; }
+    .overlay-card .help-sec p { margin: 0; font-size: 0.85rem; line-height: 1.45; }
+    .help-terms { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; font-size: 0.82rem; margin: 4px 0 0; }
+    .help-terms dt { font-weight: 700; color: var(--text-bright); }
+    .help-terms dd { margin: 0; color: var(--text-muted); line-height: 1.4; }
+    .help-card .btn-row { margin-top: 16px; }
+
+    /* Map: "Incident" recenter button (top-left, under the layer list) */
+    .map-goto-incident {
+      background: var(--panel); border: 1px solid var(--border); color: var(--text);
+      padding: 7px 10px; border-radius: 4px; cursor: pointer;
+      font-size: 12px; font-weight: 600; font-family: var(--font);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .map-goto-incident:disabled { opacity: 0.7; cursor: default; }
+    .btn-spin {
+      width: 12px; height: 12px; display: inline-block;
+      border: 2px solid var(--border); border-top-color: var(--accent);
+      border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+
     /* ═══════════════════════════════════════════════════════
        TAB BAR
        ═══════════════════════════════════════════════════════ */

@@ -574,7 +574,30 @@
     document.getElementById('headerIncident').textContent = inc.incident_name || '';
     showScreen('main');
     switchTab('map'); // lazily boots the map on first entry
+    if (!helpSeen()) showHelp();
   };
+
+  /* ═══════════════════════════════════════════
+     HELP SHEET (header "?")
+     ═══════════════════════════════════════════ */
+  // Opens by itself the first time this phone reaches the main screen (G1
+  // persona, 2026-11-10: outside responders didn't know the tabs or the words).
+  var HELP_SEEN_KEY = 'wri_respond_help_seen';
+  window.showHelp = function () {
+    var inc = (window.APP && APP.incident) || {};
+    var el = document.getElementById('helpIncident');
+    if (el) el.textContent = inc.incident_name || 'this incident';
+    document.getElementById('helpOverlay').classList.add('active');
+    var card = document.querySelector('#helpOverlay .help-card');
+    if (card) card.scrollTop = 0;
+  };
+  window.hideHelp = function () {
+    document.getElementById('helpOverlay').classList.remove('active');
+    try { localStorage.setItem(HELP_SEEN_KEY, '1'); } catch (e) {}
+  };
+  function helpSeen() {
+    try { return localStorage.getItem(HELP_SEEN_KEY) === '1'; } catch (e) { return true; }
+  }
 
   window.showWelcomeBanner = function () {
     var s = Session.get() || {};
