@@ -12,7 +12,71 @@
   var voiceIsRecording = false;
   var voiceTranscriptText = '';
 
-  var CSV_FIELDS = ['resource_type', 'identifier', 'capability', 'crew_count', 'status', 'notes', '-- skip --'];
+  var CSV_FIELDS = ['resource_type', 'identifier', 'capability', 'quantity', 'uom', 'location_name', 'crew_count', 'status', 'notes', '-- skip --'];
+  // Plain words for the column picker (G2 2026-11-10: raw field names confused people)
+  var CSV_LABELS = { resource_type: 'Type', identifier: 'Name / ID', capability: 'Description', quantity: 'Quantity',
+    uom: 'Unit (EA, ft, gal)', location_name: 'Location', crew_count: 'Crew size', status: 'Status', notes: 'Notes', '-- skip --': "Don't use" };
+  var TYPE_OPTIONS = ['Vessel', 'Vehicle', 'Equipment', 'Aircraft', 'Personnel', 'Other'];
+
+  // AI / CSV / WRRL types and statuses onto the form's own lists. An unknown
+  // type stays blank so the person picks it (an unmatched value used to show
+  // as the first option, "Vessel").
+  function normType(t) {
+    var k = String(t || '').trim().toLowerCase();
+    if (!k) return '';
+    for (var i = 0; i < TYPE_OPTIONS.length; i++) if (TYPE_OPTIONS[i].toLowerCase() === k) return TYPE_OPTIONS[i];
+    if (/boat|vessel|barge|skiff/.test(k)) return 'Vessel';
+    if (/truck|vehicle|car|pickup|van|vac/.test(k)) return 'Vehicle';
+    if (/heli|plane|aircraft|drone|uas/.test(k)) return 'Aircraft';
+    if (/crew|person|people|staff|team/.test(k)) return 'Personnel';
+    if (/trailer|boom|skimmer|pump|tank|roll|container|equip|generator|light|sorbent|absorb|pad/.test(k)) return 'Equipment';
+    return 'Other';
+  }
+  function normStatus(st) {
+    var k = String(st || '').trim().toLowerCase();
+    if (/assign|deploy|working/.test(k)) return 'assigned';
+    if (/out|service|broken|down/.test(k)) return 'out_of_service';
+    return 'available';
+  }
+  function dupKey(r) { return String((r && r.identifier) || '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+  // Everything that fills the review list ADDS to it (G2: a photo scan used to
+  // replace a truck already typed in, with no warning). Each card is flagged
+  // when its name matches another card or something already submitted.
+  var mySubmitted = {};   // dupKey -> true, from My Submissions
+  function addToReview(list) {
+    (list || []).forEach(function (r) {
+      r.resource_type = normType(r.resource_type);
+      r.status = normStatus(r.status);
+      // a place that isn't on the incident's list shows in the "not listed" box instead of vanishing
+      if (r.location_name && !isListedLocation(r.location_name)) r.location_name_custom = r.location_name;
+      pendingResources.push(r);
+    });
+    markDuplicates();
+  }
+  function markDuplicates() {
+    var seen = {};
+    pendingResources.forEach(function (r) {
+      var k = dupKey(r);
+      r._dup = '';
+      if (!k) return;
+      if (mySubmitted[k]) r._dup = 'you already submitted an item with this name.';
+      else if (seen[k]) r._dup = 'same name as another item in this list.';
+      seen[k] = true;
+    });
+  }
+  function refreshMySubmitted() {
+    if (!window.apiGet) return;
+    apiGet('myresources').then(function (data) {
+      mySubmitted = {};
+      ((data && data.resources) || []).forEach(function (r) {
+        if (String(r.review_status || '').toLowerCase() !== 'rejected') mySubmitted[dupKey(r)] = true;
+      });
+      if (pendingResources.length && document.getElementById('ws-confirm').classList.contains('active')) {
+        markDuplicates(); renderConfirmCards();
+      }
+    }).catch(function () {});
+  }
 
   /* ═══════════════════════════════════════════
      SCREEN ENTRY / EXIT
@@ -21,6 +85,8 @@
     pendingResources = [];
     resetUploadWorkspace();
     loadActiveLocations();
+    refreshMySubmitted();
+    setManualType('');
     showScreen('resource-upload');
   };
 
@@ -149,7 +215,7 @@
           hideAnalyzing();
           var resources = normalizeParsed(result);
           if (resources.length) {
-            pendingResources = resources;
+            addToReview(resources);
             showConfirmationCards();
           } else {
             showToast('No resources detected. Try another image or use manual entry.', true);
@@ -228,7 +294,7 @@
           document.getElementById('ws-csv').classList.add('active');
           return;
         }
-        pendingResources = resources;
+        addToReview(resources);
         showConfirmationCards();
       })
       .catch(function (err) {
@@ -265,16 +331,22 @@
   // Client-side replacement for the legacy server-side suggestCSVMapping:
   // ordered keyword heuristics over the header names.
   function suggestCSVMapping(headers) {
-    var mappings = {};
+    // One field per column, first good match wins (G2: "Name" and "Unit" both
+    // became the name, so every item was called "EA").
+    var mappings = {}, used = {};
+    function take(h, f) { if (!used[f]) { mappings[h] = f; used[f] = true; } }
     headers.forEach(function (h) {
-      var l = String(h || '').toLowerCase();
+      var l = String(h || '').trim().toLowerCase();
       if (!l) return;
-      if (/crew|pax|personnel|staff/.test(l)) mappings[h] = 'crew_count';
-      else if (/status|state|avail/.test(l)) mappings[h] = 'status';
-      else if (/note|comment|remark/.test(l)) mappings[h] = 'notes';
-      else if (/type|category|kind|class/.test(l)) mappings[h] = 'resource_type';
-      else if (/capab|desc|function|mission|equip/.test(l)) mappings[h] = 'capability';
-      else if (/name|ident|unit|call\s?sign|asset|resource|^id$|\bid\b/.test(l)) mappings[h] = 'identifier';
+      if (/^(unit|units|uom|u\/m|unit of measure)$/.test(l)) take(h, 'uom');
+      else if (/qty|quantity|^count$|^#$|how many|number of/.test(l) && !/crew|pax|people/.test(l)) take(h, 'quantity');
+      else if (/crew|pax|personnel|staff|people/.test(l)) take(h, 'crew_count');
+      else if (/locat|where|site|staging|deliver/.test(l)) take(h, 'location_name');
+      else if (/status|state|avail/.test(l)) take(h, 'status');
+      else if (/note|comment|remark/.test(l)) take(h, 'notes');
+      else if (/type|category|kind|class/.test(l)) take(h, 'resource_type');
+      else if (/capab|desc|function|mission|equip|spec|size/.test(l)) take(h, 'capability');
+      else if (/name|ident|unit\s*(id|#|no)|call\s?sign|asset|resource|^id$|\bid\b|plate|hull/.test(l)) take(h, 'identifier');
     });
     return mappings;
   }
@@ -294,7 +366,7 @@
       html += '<td><select class="csv-map-select" data-col="' + i + '">';
       CSV_FIELDS.forEach(function (f) {
         var sel = (f === suggested) ? ' selected' : '';
-        html += '<option value="' + f + '"' + sel + '>' + f + '</option>';
+        html += '<option value="' + f + '"' + sel + '>' + esc(CSV_LABELS[f] || f) + '</option>';
       });
       html += '</select></td></tr>';
     });
@@ -330,17 +402,24 @@
       if (field !== '-- skip --') colMap[col] = field;
     }
 
-    pendingResources = dataRows.map(function (row) {
-      var r = { resource_type: 'other', identifier: '', capability: '', crew_count: '', status: 'available', notes: '' };
+    var before = pendingResources.length;
+    var rows = dataRows.map(function (row) {
+      var r = { resource_type: '', identifier: '', capability: '', crew_count: '', status: 'available', notes: '' };
       Object.keys(colMap).forEach(function (col) {
-        r[colMap[col]] = row[parseInt(col, 10)] || '';
+        r[colMap[col]] = String(row[parseInt(col, 10)] || '').trim();
       });
+      // Quantity (+ unit) has no column of its own on the resource record: it leads the notes.
+      var q = String(r.quantity || '').trim(), u = String(r.uom || '').trim();
+      var single = (!q || q === '1') && (!u || /^(ea|each|unit|units)$/i.test(u));
+      if (!single) r.notes = ('Qty ' + (q || '1') + (u ? ' ' + u : '') + (r.notes ? '. ' + r.notes : '')).trim();
+      delete r.quantity; delete r.uom;
       return r;
     }).filter(function (r) {
-      return r.identifier || r.capability || r.resource_type !== 'other';
+      return r.identifier || r.capability || r.resource_type;
     });
+    addToReview(rows);
 
-    if (pendingResources.length === 0) {
+    if (pendingResources.length === before) {
       showToast('No valid resources found. Check your column mapping.', true);
       return;
     }
@@ -415,7 +494,7 @@
         hideAnalyzing();
         var resources = normalizeParsed(result);
         if (resources.length) {
-          pendingResources = resources;
+          addToReview(resources);
           showConfirmationCards();
         } else {
           showToast('No resources detected from transcript. Try manual entry.', true);
@@ -435,18 +514,33 @@
      ═══════════════════════════════════════════ */
   window.addManualResource = function () {
     var identifier = document.getElementById('manualIdentifier').value.trim();
+    var type = document.getElementById('manualType').value;
+    if (!type) {
+      showToast('Pick a type first.', true);
+      return;
+    }
     if (!identifier) {
       showToast('Identifier / Name is required.', true);
       return;
     }
-    pendingResources.push({
-      resource_type: document.getElementById('manualType').value,
+    var locSel = document.getElementById('manualLocation');
+    var locOther = document.getElementById('manualLocationOther');
+    var loc = locSel ? locSel.value : '';
+    if (loc === '__custom__') loc = (locOther && locOther.value.trim()) || '';
+    var item = {
+      resource_type: type,
       identifier: identifier,
       capability: document.getElementById('manualCapability').value.trim(),
       crew_count: document.getElementById('manualCrew').value || '',
       status: document.getElementById('manualStatus').value,
       notes: document.getElementById('manualNotes').value.trim()
-    });
+    };
+    if (loc) {
+      item.location_name = loc;
+      if (!isListedLocation(loc)) item.location_name_custom = loc;
+    }
+    addToReview([item]);
+    setManualType('');
 
     document.getElementById('manualIdentifier').value = '';
     document.getElementById('manualCapability').value = '';
@@ -669,6 +763,7 @@
     });
     wrrlSelected = {};
     wrrlBoomFt = {};
+    markDuplicates();
     showConfirmationCards();
   };
 
@@ -693,21 +788,23 @@
       var lowConf = r._low_confidence || [];
       html += '<div class="resource-card" data-idx="' + idx + '">';
       html += '<div class="card-header">';
-      html += '<span class="badge badge-' + getTypeBadgeClass(r.resource_type) + '">' + esc(r.resource_type || 'other') + '</span>';
+      html += '<span class="badge badge-' + getTypeBadgeClass(r.resource_type) + '">' + esc(r.resource_type || 'pick a type') + '</span>';
       html += '<button class="btn-icon" onclick="removeResource(' + idx + ')" title="Remove" style="color:var(--danger);">&#10005;</button>';
       html += '</div>';
+      if (r._dup) html += '<div class="card-dup">&#9888; Possible duplicate: ' + esc(r._dup) + '</div>';
 
-      html += '<div class="card-field' + (lowConf.indexOf('resource_type') > -1 ? ' low-confidence' : '') + '">';
+      html += '<div class="card-field' + (lowConf.indexOf('resource_type') > -1 || !r.resource_type ? ' low-confidence' : '') + '">';
       html += '<label>Type</label>';
       html += '<select onchange="updatePendingField(' + idx + ', \'resource_type\', this.value)">';
-      ['Vessel', 'Vehicle', 'Equipment', 'Aircraft', 'Other'].forEach(function (t) {
+      html += '<option value=""' + (r.resource_type ? '' : ' selected') + '>Pick a type...</option>';
+      TYPE_OPTIONS.forEach(function (t) {
         html += '<option value="' + t + '"' + ((r.resource_type || '').toLowerCase() === t.toLowerCase() ? ' selected' : '') + '>' + t + '</option>';
       });
       html += '</select></div>';
 
       html += '<div class="card-field' + (lowConf.indexOf('identifier') > -1 ? ' low-confidence' : '') + '">';
       html += '<label>Identifier</label>';
-      html += '<input type="text" value="' + escAttr(r.identifier || '') + '" onchange="updatePendingField(' + idx + ', \'identifier\', this.value)">';
+      html += '<input type="text" value="' + escAttr(r.identifier || '') + '" onchange="updatePendingField(' + idx + ', \'identifier\', this.value); recheckDuplicates();">';
       html += '</div>';
 
       html += '<div class="card-field' + (lowConf.indexOf('capability') > -1 ? ' low-confidence' : '') + '">';
@@ -780,7 +877,9 @@
 
   window.updatePendingField = function (idx, field, value) {
     if (pendingResources[idx]) pendingResources[idx][field] = value;
+    if (field === 'resource_type') renderConfirmCards();   // badge + "pick a type" highlight
   };
+  window.recheckDuplicates = function () { markDuplicates(); renderConfirmCards(); };
 
   window.handleLocationSelect = function (idx, selectEl) {
     if (!pendingResources[idx]) return;
@@ -796,6 +895,7 @@
 
   window.removeResource = function (idx) {
     pendingResources.splice(idx, 1);
+    markDuplicates();
     if (pendingResources.length === 0) {
       exitModeFull(); // nothing left to review — back to the mode grid
       document.getElementById('confirmTitle').textContent = 'Review Resources';
@@ -809,18 +909,64 @@
     apiGet('locations')
       .then(function (data) {
         activeLocations = (data && data.locations) || [];
+        fillLocationSelects();
       })
       .catch(function () {
         activeLocations = [];
+        fillLocationSelects();
       });
   }
   window.loadActiveLocations = loadActiveLocations;
+
+  // Same grouped staging/location list on the Fill Out Form and the supply
+  // request's "Deliver to" (G2: one was a dropdown, the other free text).
+  function locationOptionsHtml(selected) {
+    var html = '<option value="">Select location...</option>', types = {};
+    activeLocations.forEach(function (loc) { var t = loc.type || 'Other'; (types[t] = types[t] || []).push(loc); });
+    Object.keys(types).forEach(function (t) {
+      html += '<optgroup label="' + escAttr(t) + '">';
+      types[t].forEach(function (loc) {
+        html += '<option value="' + escAttr(loc.name) + '"' + (selected === loc.name ? ' selected' : '') + '>' + esc(loc.name) + '</option>';
+      });
+      html += '</optgroup>';
+    });
+    return html + '<option value="__custom__">Location not listed...</option>';
+  }
+  function fillLocationSelects() {
+    ['manualLocation', 'rrDeliverySel'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      var keep = el.value;
+      el.innerHTML = locationOptionsHtml(keep);
+      if (keep) el.value = keep;
+    });
+  }
+  window.fillLocationSelects = fillLocationSelects;
+  window.onLocationSelect = function (sel, otherId) {
+    var other = document.getElementById(otherId);
+    if (other) other.classList.toggle('hidden', sel.value !== '__custom__');
+  };
+
+  // Fill Out Form type: big tap buttons instead of a select (G2: the first tap
+  // on "Vehicle" didn't take, and it defaulted to Vessel). No default.
+  function setManualType(t) {
+    var inp = document.getElementById('manualType');
+    if (inp) inp.value = t || '';
+    var chips = document.querySelectorAll('#manualTypeChips .chip');
+    for (var i = 0; i < chips.length; i++) chips[i].classList.toggle('selected', chips[i].getAttribute('data-type') === t);
+  }
+  window.setManualType = setManualType;
 
   /* ═══════════════════════════════════════════
      SUBMIT
      ═══════════════════════════════════════════ */
   window.submitAllResources = function () {
     if (!pendingResources.length) return;
+    var untyped = pendingResources.filter(function (r) { return !r.resource_type; }).length;
+    if (untyped) {
+      showToast('Pick a type for ' + untyped + ' item(s) before submitting.', true);
+      return;
+    }
 
     var cleaned = pendingResources.map(function (r) {
       return {
@@ -949,7 +1095,11 @@
               '" style="margin-right:6px;">' + esc(r.resource_type || 'other') + '</span>' + esc(r.identifier || 'Unknown') + '</div>';
             html += '<div class="res-detail">' + esc(r.capability || '') + (r.crew_count ? ' | Crew: ' + esc(r.crew_count) : '') + '</div>';
             html += '</div>';
-            html += '<div class="res-status"><span class="badge badge-active">' + esc(r.status || 'Active') + '</span></div>';
+            // Not accepted by WRI yet = Pending everywhere, never "available" (G2)
+            var pendingReview = /^pending/i.test(String(r.review_status || ''));
+            html += '<div class="res-status">' + (pendingReview
+              ? '<span class="badge badge-pending">Pending review</span>'
+              : '<span class="badge badge-active">' + esc(String(r.status || 'Active').replace(/_/g, ' ')) + '</span>') + '</div>';
             html += '</div>';
           });
           html += '</div>';

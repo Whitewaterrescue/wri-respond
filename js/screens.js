@@ -390,7 +390,9 @@
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner spinner-sm"></span> Checking in...';
 
-    var hasResources = false; // resource logging moved to Resources → + Add More
+    // G2 2026-11-10: "I brought equipment or a crew" goes straight to logging it
+    var hasResEl = document.getElementById('signinHasResources');
+    var hasResources = !!(hasResEl && hasResEl.checked);
     var payload = {
       pin: window._gwPin,
       name: document.getElementById('signinName').value.trim(),
@@ -612,6 +614,19 @@
      ═══════════════════════════════════════════ */
   window.showCheckoutOverlay = function () {
     document.getElementById('checkoutOverlay').classList.add('active');
+    // Warn about 214 entries still on this phone (G2: two never uploaded and
+    // check-out said nothing).
+    var box = document.getElementById('checkoutUnsent');
+    if (!box) return;
+    box.classList.add('hidden');
+    if (!window.unsent214Count) return;
+    unsent214Count().then(function (n) {
+      if (!n) return;
+      box.innerHTML = '<b>' + n + ' activity log (214) entr' + (n === 1 ? 'y has' : 'ies have') +
+        ' not uploaded yet.</b> ' + (n === 1 ? 'It stays' : 'They stay') + ' on this phone until ' + (n === 1 ? 'it sends.' : 'they send.') +
+        '<button type="button" class="btn btn-secondary btn-block mt-12" onclick="hideCheckoutOverlay(); send214Now();">' + (n === 1 ? 'Send it now' : 'Send them now') + '</button>';
+      box.classList.remove('hidden');
+    });
   };
 
   window.hideCheckoutOverlay = function () {
@@ -641,13 +656,35 @@
     document.getElementById('tyCheckinTime').textContent = s.checkin_time ? formatTime(s.checkin_time) : '-';
     document.getElementById('tyCheckoutTime').textContent = formatTime(new Date().toISOString());
     document.getElementById('tyResourceCount').textContent = String((window.APP && APP.resourceCount) || 0);
+    var reqEl = document.getElementById('tyRequestCount');
+    if (reqEl) reqEl.textContent = String(window.myRequestCount ? myRequestCount() : 0);   // before Session.clear (per check-in)
+    var unsentEl = document.getElementById('tyUnsent214');
+    if (unsentEl) {
+      unsentEl.textContent = '…';
+      (window.unsent214Count ? unsent214Count() : Promise.resolve(0)).then(function (n) {
+        unsentEl.textContent = String(n);
+        unsentEl.style.color = n ? 'var(--warning)' : '';
+      });
+    }
     Session.clear();
+    forgetAccessCode();
     if (window.APP) APP.session = null;
     showScreen('thankyou');
   };
 
+  // The access code is for the person who entered it: check-out ends it, so
+  // the next person on a shared phone is asked again (G2 2026-11-10 — the
+  // "code OK" flag used to last forever on the device).
+  function forgetAccessCode() {
+    window._gwPin = '';
+    try { localStorage.removeItem(PIN_STORE_KEY); localStorage.removeItem('wri_respond_pin_inc'); } catch (e) {}
+    Session.pinOk.set(false);
+  }
+  window.forgetAccessCode = forgetAccessCode;
+
   window.restartApp = function () {
     Session.clear();
+    forgetAccessCode();
     location.reload();
   };
 

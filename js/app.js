@@ -76,6 +76,8 @@
       } else {
         loadMyResources();
         loadAllResources();
+        if (window.refreshMyRequests) refreshMyRequests(false);
+        if (window.loadActiveLocations) loadActiveLocations();   // request "Deliver to" list
       }
     }
 

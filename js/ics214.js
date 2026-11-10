@@ -46,7 +46,8 @@
   function wantUrl() {
     var inc = (window.incidentPin && window.incidentPin()) || '';
     var s = (window.Session && Session.get()) || {};
-    return FORMS + '?embed=214' + (inc ? '&incident=' + encodeURIComponent(inc) : '') +
+    // from=gateway: an outside responder's own log only (no unit-log picker, G2 2026-11-10)
+    return FORMS + '?embed=214&from=gateway' + (inc ? '&incident=' + encodeURIComponent(inc) : '') +
       (s.name ? '&name=' + encodeURIComponent(s.name) : '') + '#214';
   }
 
@@ -101,6 +102,7 @@
       show(loadEl, false);
       var ok = isEmbed214();
       panel.classList.toggle('stale', !ok); show(staleEl, !ok);
+      if (ok) handOverPin();
     });
 
     // "saved" from the panel: flash the button green (useful once it's closed)
@@ -112,6 +114,63 @@
       okTimer = setTimeout(function () { fab.classList.remove('ok'); fab.textContent = '214'; }, 3000);
     });
   }
+
+  // The access code this person entered at the Gateway is the incident's Gateway
+  // PIN, the same one Field Forms uploads 214s with. Same origin, so hand it to
+  // the panel's outbox: an outsider holding only the QR is never asked twice (G2).
+  function incId() { return String(((window.APP && APP.incident) || {}).incident_id || ''); }
+  function handOverPin() {
+    var pin = window._gwPin || '', id = incId();
+    if (!pin || !id) return;
+    try {
+      var w = frame.contentWindow;
+      if (!w || !w.Outbox || !w.Outbox.pinFor) return;
+      w.Outbox.pinFor(id).then(function (have) { if (have !== pin) return w.Outbox.setPin(pin, id); }).catch(function () {});
+    } catch (e) {}
+  }
+
+  // 214 entries still on this phone (not uploaded). Reads Field Forms' own
+  // IndexedDB (same origin) — through the panel when it is loaded, else
+  // directly, but only if that database already exists: opening a missing one
+  // would create it empty and break Field Forms' first-run setup.
+  function recordsFromFrame() {
+    try {
+      var w = frame && frame.contentWindow;
+      if (w && w.Store && w.Store.all) return w.Store.all('records');
+    } catch (e) {}
+    return null;
+  }
+  function recordsFromDb() {
+    if (!window.indexedDB || !indexedDB.databases) return Promise.resolve([]);
+    return indexedDB.databases().then(function (dbs) {
+      if (!(dbs || []).some(function (d) { return d && d.name === 'wri-recon'; })) return [];
+      return new Promise(function (resolve) {
+        var rq = indexedDB.open('wri-recon');
+        rq.onerror = function () { resolve([]); };
+        rq.onupgradeneeded = function () { try { rq.transaction.abort(); } catch (e) {} };
+        rq.onsuccess = function () {
+          var db = rq.result;
+          try {
+            if (!db.objectStoreNames.contains('records')) { db.close(); return resolve([]); }
+            var g = db.transaction('records', 'readonly').objectStore('records').getAll();
+            g.onsuccess = function () { db.close(); resolve(g.result || []); };
+            g.onerror = function () { db.close(); resolve([]); };
+          } catch (e) { try { db.close(); } catch (x) {} resolve([]); }
+        };
+      });
+    }).catch(function () { return []; });
+  }
+  window.unsent214Count = function () {
+    var p = recordsFromFrame() || recordsFromDb();
+    return Promise.resolve(p).then(function (rs) {
+      return (rs || []).filter(function (r) { return r && r.kind === '214' && r.status !== 'sent'; }).length;
+    }).catch(function () { return 0; });
+  };
+  /** Open the panel so its outbox uploads (with the PIN handed over). */
+  window.send214Now = function () {
+    try { var w = frame && frame.contentWindow; if (src && w && w.Outbox) { handOverPin(); w.Outbox.drain(); } } catch (e) {}
+    openPanel(false);
+  };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 })();

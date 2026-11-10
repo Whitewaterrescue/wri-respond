@@ -48,7 +48,11 @@
     frame.setAttribute('allow', 'autoplay; fullscreen; picture-in-picture');
     frame.setAttribute('allowfullscreen', '');
     frame.referrerPolicy = 'no-referrer-when-downgrade';
-    frame.src = kind === 'drones' ? CONFIG.DRONE_LIVE_URL : CONFIG.NOVA_LIVE_URL;
+    // The drone page takes the incident PIN from the fragment (#pin=, never the
+    // query string, so it reaches no server log): the access code this person
+    // already entered here, so they aren't asked again (G2 2026-11-10).
+    var pinFrag = (kind === 'drones' && window._gwPin) ? '#pin=' + encodeURIComponent(window._gwPin) : '';
+    frame.src = kind === 'drones' ? CONFIG.DRONE_LIVE_URL + pinFrag : CONFIG.NOVA_LIVE_URL;
     var title = byId('liveBarTitle'), open2 = byId('liveOpenBtn2');
     if (title) title.textContent = kind === 'drones' ? 'WRI drones' : 'Nova Live Stream';
     if (open2) open2.style.display = kind === 'drones' ? 'none' : '';
@@ -114,6 +118,8 @@
     if (!frame || kind !== 'drones' || e.origin !== CONFIG.DRONE_LIVE_ORIGIN || !e.data || e.data.type !== 'wri-live-ready') return;
     var inc = '';
     try { inc = window.incidentPin ? window.incidentPin() : ''; } catch (x) {}
+    // no pin on this phone = the primary; name it, so the drone page can use the handed-over PIN
+    if (!inc) inc = String(((window.APP && APP.incident) || {}).incident_id || '');
     frame.contentWindow.postMessage({ type: 'wri-live-auth', incident: String(inc || '') }, CONFIG.DRONE_LIVE_ORIGIN);
   });
 

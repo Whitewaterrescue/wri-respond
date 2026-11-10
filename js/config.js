@@ -34,6 +34,10 @@ self.CONFIG = {
   DRONE_LIVE_ORIGIN: 'https://drone.whitewaterrescue.com',
   LIVE_TEARDOWN_MS: 3000,   // hidden/left this long -> unload the stream
 
+  // Logistics dashboard JSON API: 'offline_rr_status' for My Requests (Gateway-PIN
+  // gated, read-only). Same deployment Field Forms' LOGISTICS_API uses.
+  LOGISTICS_API: 'https://script.google.com/macros/s/AKfycbzdbJxKm9RKm58deSqvrsFQ5GFb-zbaLIZxokwL7JQH-UL5gOAnxqurHaLVuS0NSHyA/exec',
+
   // ArcGIS JS SDK (AMD build, lazy-loaded on first Map-tab open)
   ARCGIS_JS:  'https://js.arcgis.com/4.29/',
   ARCGIS_CSS: 'https://js.arcgis.com/4.29/esri/themes/dark/main.css',
