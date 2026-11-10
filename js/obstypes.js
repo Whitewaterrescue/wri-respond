@@ -38,6 +38,7 @@ self.OBS_TYPES = [
   // excludes the Safety category, so these reach the ICP, not the shared map.
   { category: 'Safety', code: 'near_miss',    label: 'Near Miss',    icon: 'near_miss' },
   { category: 'Safety', code: 'injury',       label: 'Injury',       icon: 'injury' },
+  { category: 'Safety', code: 'stop_work',    label: 'Stop Work',    icon: 'stop_work' },   // G4: alerts the IC + Safety Officer
   { category: 'Safety', code: 'other_safety', label: 'Other Safety', icon: 'other_safety' }
 ];
 

@@ -409,7 +409,7 @@
     var observer = !!(obsEl && obsEl.checked);
     if (observer) hasResources = false;
     if (!observer && !document.getElementById('signinSafetyBriefing').checked) {
-      showToast('Confirm the safety briefing, or tick "observing remotely".', true);
+      showToast(window.t ? t('si.needSafety') : 'Confirm the safety talk.', true);
       btn.disabled = false; btn.textContent = 'Check In';
       return;
     }
@@ -465,6 +465,7 @@
           openResourceUpload();
         } else {
           enterMainApp();
+          if (!observer && window.showFirstStop) setTimeout(showFirstStop, 400);   // G4: where to go, who to ask
         }
       })
       .catch(function (err) {
@@ -599,6 +600,9 @@
     document.getElementById('headerUser').textContent = s.name || '';
     document.getElementById('headerIncident').textContent = inc.incident_name || '';
     applyObserverMode();
+    // G4: the phone numbers and the staging point are ready before anyone taps Get help
+    if (window.loadHaspCard) loadHaspCard();
+    if (window.loadStaging) loadStaging();
     showScreen('main');
     switchTab('map'); // lazily boots the map on first entry
     if (!helpSeen()) showHelp();
@@ -700,6 +704,8 @@
     document.getElementById('tyCheckinTime').textContent = s.checkin_time ? formatTime(s.checkin_time) : '-';
     document.getElementById('tyCheckoutTime').textContent = formatTime(new Date().toISOString());
     document.getElementById('tyResourceCount').textContent = String((window.APP && APP.resourceCount) || 0);
+    var repEl = document.getElementById('tyReportCount');
+    if (repEl) repEl.textContent = String((window.APP && APP.reportCount) || 0);
     var reqEl = document.getElementById('tyRequestCount');
     if (reqEl) reqEl.textContent = String(window.myRequestCount ? myRequestCount() : 0);   // before Session.clear (per check-in)
     var unsentEl = document.getElementById('tyUnsent214');

@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g3">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g4">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -74,14 +74,17 @@
         <img src="assets/wri-logo.png" alt="WRI" style="height:32px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
         <div class="logo-sub">External Responder Gateway</div>
       </div>
-      <div id="pinInstructions" style="text-align:center;color:#9ca3af;font-size:13px;margin-bottom:20px;">Enter the access code provided by the incident team.</div>
+      <div class="lang-pick"><span data-i18n="lang.label">Language</span>
+        <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">English</button>
+        <button type="button" class="lang-btn" data-lang="es" onclick="setLang('es')">Español</button></div>
+      <div id="pinInstructions" style="text-align:center;color:#9ca3af;font-size:14px;margin-bottom:20px;" data-i18n="pin.msg">Enter the code the crew gave you.</div>
       <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
         <input type="tel" id="pin-1" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,2)" onfocus="this.select()">
         <input type="tel" id="pin-2" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,3)" onfocus="this.select()">
         <input type="tel" id="pin-3" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,4)" onfocus="this.select()">
         <input type="tel" id="pin-4" maxlength="1" inputmode="numeric" style="width:48px;height:56px;text-align:center;font-size:24px;font-weight:700;background:#2a2c2c;border:2px solid #55595a;border-radius:8px;color:#fff;outline:none;" oninput="pinInput(this,null)">
       </div>
-      <button onclick="submitPin()" style="width:100%;padding:14px;background:#EC2329;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;">Enter</button>
+      <button onclick="submitPin()" style="width:100%;padding:14px;background:#EC2329;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;" data-i18n="pin.enter">Enter</button>
       <div id="pin-error" style="color:#ef4444;text-align:center;font-size:13px;min-height:20px;margin-top:10px;"></div>
     </div>
   </div>
@@ -96,8 +99,11 @@
         <div class="logo-sub">External Responder Gateway</div>
       </div>
 
+      <div class="lang-pick"><span data-i18n="lang.label">Language</span>
+        <button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">English</button>
+        <button type="button" class="lang-btn" data-lang="es" onclick="setLang('es')">Español</button></div>
       <div class="signin-incident">
-        <div class="label">Active Incident</div>
+        <div class="label" data-i18n="si.incident">Incident</div>
         <div class="name" id="signinIncidentName"></div>
       </div>
 
@@ -108,31 +114,29 @@
       <form id="signinForm" autocomplete="off">
         <div class="checkbox-group" style="margin-bottom:12px;">
           <input type="checkbox" id="signinObserver" onchange="onObserverToggle(this)">
-          <label for="signinObserver">I'm observing remotely (client / agency, not on scene)</label>
+          <label for="signinObserver" data-i18n="si.observer">I'm watching from somewhere else (not working here)</label>
         </div>
         <div class="checkbox-group" id="signinSafetyGroup" style="background:rgba(236,35,41,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
           <input type="checkbox" id="signinSafetyBriefing" required>
-          <label for="signinSafetyBriefing" style="font-weight:600;">I have received or will receive a safety briefing before beginning work</label>
+          <label for="signinSafetyBriefing" style="font-weight:600;" data-i18n="si.safety">I will get a safety talk before I start work.</label>
         </div>
         <div class="form-group">
-          <label for="signinName">Full Name</label>
+          <label for="signinName" data-i18n="si.name">Your name</label>
           <input type="text" id="signinName" placeholder="e.g. Jane Smith" required>
         </div>
         <div class="form-group">
-          <label for="signinOrg">Organization</label>
+          <label for="signinOrg" data-i18n="si.org">Company</label>
           <input type="text" id="signinOrg" placeholder="e.g. County Fire Dept" required>
         </div>
         <div class="form-group">
-          <label for="signinContact">Contact <span style="font-weight:400;color:var(--text-muted);">(phone or email)</span></label>
+          <label for="signinContact" data-i18n="si.contact">Phone or email</label>
           <input type="text" id="signinContact" placeholder="(555) 555-1234 or you@example.com" autocomplete="off">
         </div>
         <div class="checkbox-group" id="signinHasResourcesGroup" style="margin-bottom:16px;">
           <input type="checkbox" id="signinHasResources">
-          <label for="signinHasResources">I brought equipment or a crew to log</label>
+          <label for="signinHasResources" data-i18n="si.equip">I brought trucks, boats or a crew</label>
         </div>
-        <button type="submit" class="btn btn-primary btn-block" id="signinBtn">
-          Check In
-        </button>
+        <button type="submit" class="btn btn-primary btn-block" id="signinBtn" data-i18n="si.btn">Check in</button>
       </form>
     </div>
   </div>
@@ -359,8 +363,9 @@
       <img src="assets/wri-logo.png" alt="WRI" style="height:28px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
       <span class="incident-name" id="headerIncident"></span>
       <span class="user-name" id="headerUser"></span>
+      <button class="gethelp-btn" type="button" onclick="showGetHelp()" aria-label="Get help"><span aria-hidden="true">&#127384;</span> <span data-i18n="hdr.help">Get help</span></button>
       <button class="help-btn" type="button" onclick="showHelp()" aria-label="How to use this app" title="How to use this app">?</button>
-      <button class="checkout-btn" onclick="showCheckoutOverlay()">Check Out</button>
+      <button class="checkout-btn" onclick="showCheckoutOverlay()" data-i18n="hdr.checkout">Check out</button>
     </div>
     <div class="welcome-banner" id="welcomeBanner"></div>
 
@@ -412,18 +417,18 @@
       <!-- ADD TO COP TAB (recon submission) -->
       <div class="tab-pane" id="tab-recon">
         <div class="recon-form">
-          <div class="recon-step-label">1 &middot; Location <span>&mdash; tap the map to place the point anywhere</span></div>
+          <div class="recon-step-label"><span data-i18n="rc.where">1 · Where is it?</span> <span data-i18n="rc.whereHint">Tap the map where it is.</span></div>
           <div class="recon-map-preview">
             <div id="reconMiniMap"></div>
             <div class="gps-status" id="reconGpsStatus">Acquiring GPS...</div>
           </div>
           <div style="display:flex;gap:8px;margin:8px 0 4px;">
-            <button type="button" class="btn btn-secondary btn-sm" onclick="useDeviceLocation()" style="flex:1;">&#128205; Use My Location</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="useDeviceLocation()" style="flex:1;" data-i18n="rc.here">&#128205; I'm there now</button>
           </div>
           <div id="reconCoordDisplay" style="font-size:11px;color:var(--text-muted);margin:2px 0 12px;text-align:center;">Tap the map to report a spot away from you.</div>
 
           <form id="reconForm" autocomplete="off">
-            <div class="recon-step-label">2 &middot; Observation Type</div>
+            <div class="recon-step-label" data-i18n="rc.what">2 · What is it?</div>
             <div class="cat-tabs" id="reconCatTabs"></div>
             <div class="obs-grid" id="reconObsGrid"></div>
             <div class="form-group hidden" id="reconSubtypeSection">
@@ -431,11 +436,11 @@
               <div class="chip-row" id="reconSubtypeChips"></div>
             </div>
 
-            <div class="recon-step-label">3 &middot; Details</div>
+            <div class="recon-step-label" data-i18n="rc.more">3 · Tell us more</div>
             <div class="form-group">
-              <label for="reconNotes">Description</label>
-              <textarea id="reconNotes" placeholder="Describe what you observed..."></textarea>
+              <textarea id="reconNotes" data-i18n-ph="rc.desc" placeholder="What did you see? Is anyone hurt?"></textarea>
             </div>
+            <details class="recon-more"><summary data-i18n="rc.crew">More details (crew name)</summary>
             <div class="form-group">
               <label for="reconTfName">Task Force / Strike Team Name (optional)</label>
               <input type="text" id="reconTfName" maxlength="100" placeholder="e.g. TF Bravo, Strike Team 2">
@@ -448,22 +453,22 @@
                 <option value="planned">Planned</option>
               </select>
             </div>
+            </details>
             <div class="form-group">
-              <label>Photos (optional, up to 3)</label>
+              <label data-i18n="rc.photos">Photos (you can skip this)</label>
               <input type="file" accept="image/*" capture="environment" multiple id="reconPhoto" style="font-size:16px; padding: 10px 0; color: var(--text);">
               <div id="reconPhotoPreview" class="recon-photo-row"></div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block" id="reconSubmitBtn">
-              Add to COP
-            </button>
+            <button type="submit" class="btn btn-primary btn-block" id="reconSubmitBtn" data-i18n="rc.send">Send report</button>
             <div style="font-size:11px;color:var(--text-muted);margin-top:6px;text-align:center;">Submitted under your check-in name and shown on the incident map.</div>
           </form>
 
           <div id="reconSuccess" class="hidden" style="text-align:center; padding: 20px 0;">
             <div style="font-size: 2.5rem; margin-bottom: 12px; color: var(--success);">&#10003;</div>
-            <h3>Added to the COP</h3>
-            <p class="text-muted mt-12">Your observation has been recorded on the incident map.</p>
-            <button class="btn btn-secondary mt-16" onclick="resetReconForm()">Submit Another</button>
+            <h3 data-i18n="rc.sentTitle">Report sent</h3>
+            <div id="reconAlertResult"></div>
+            <p class="text-muted mt-12" data-i18n="rc.sentMap">It is on the incident map.</p>
+            <button class="btn btn-secondary mt-16" onclick="resetReconForm()" data-i18n="rc.another">Send another</button>
           </div>
         </div>
       </div>
@@ -569,23 +574,23 @@
     <div class="tab-bar">
       <button class="active" onclick="switchTab('map')" id="tabBtn-map">
         <span class="tab-icon">&#128506;</span>
-        Map
+        <span data-i18n="tab.map">Map</span>
       </button>
       <button onclick="switchTab('live')" id="tabBtn-live">
         <span class="tab-icon">&#128250;</span>
-        Live
+        <span data-i18n="tab.live">Video</span>
       </button>
       <button onclick="switchTab('recon')" id="tabBtn-recon">
         <span class="tab-icon">&#128205;</span>
-        Add to COP
+        <span data-i18n="tab.recon">Report</span>
       </button>
       <button onclick="switchTab('sitstat')" id="tabBtn-sitstat">
         <span class="tab-icon">&#128202;</span>
-        Sit Stat
+        <span data-i18n="tab.sitstat">Status</span>
       </button>
       <button onclick="switchTab('resources')" id="tabBtn-resources">
         <span class="tab-icon">&#128230;</span>
-        Resources
+        <span data-i18n="tab.resources">Equipment</span>
       </button>
     </div>
   </div>
@@ -596,7 +601,7 @@
   <div id="screen-thankyou" class="screen">
     <div class="thankyou-container">
       <div class="thankyou-check">&#10003;</div>
-      <h1>Thank You</h1>
+      <h1 data-i18n="ty.title">Thank you</h1>
       <p class="text-muted mt-12" id="tyMessage">You have been checked out of the incident.</p>
 
       <div class="thankyou-stats">
@@ -615,6 +620,10 @@
         <div class="stat-row">
           <span class="stat-label">Resources Submitted</span>
           <span class="stat-value" id="tyResourceCount"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label" data-i18n="ty.reports">Reports sent</span>
+          <span class="stat-value" id="tyReportCount"></span>
         </div>
         <div class="stat-row">
           <span class="stat-label">Supply Requests</span>
@@ -637,12 +646,12 @@
        ═══════════════════════════════════════════════════════ -->
   <div id="checkoutOverlay" class="overlay">
     <div class="overlay-card">
-      <h2>Check Out?</h2>
-      <p>This will end your session. Any unsubmitted resources will be lost.</p>
+      <h2 data-i18n="co.title">Check out?</h2>
+      <p data-i18n="co.body">This ends your check-in. Anything you haven't sent will be lost.</p>
       <div id="checkoutUnsent" class="checkout-unsent hidden"></div>
       <div class="btn-row">
-        <button class="btn btn-secondary" onclick="hideCheckoutOverlay()">Cancel</button>
-        <button class="btn btn-danger" onclick="confirmCheckOut()">Check Out</button>
+        <button class="btn btn-secondary" onclick="hideCheckoutOverlay()" data-i18n="co.cancel">Cancel</button>
+        <button class="btn btn-danger" onclick="confirmCheckOut()" data-i18n="co.ok">Check out</button>
       </div>
     </div>
   </div>
@@ -650,48 +659,38 @@
   <!-- ═══════════════════════════════════════════════════════
        HELP SHEET (header "?"; opens by itself the first time a phone checks in)
        ═══════════════════════════════════════════════════════ -->
+  <!-- GET HELP (header red button, every main screen) + FIRST STOP (once after check-in): js/safety.js -->
+  <div id="getHelpOverlay" class="overlay" onclick="if (event.target === this) hideGetHelp()">
+    <div class="overlay-card gethelp-card" role="dialog" aria-labelledby="ghTitle">
+      <h2 id="ghTitle">&#127384; <span data-i18n="gh.title">Get help</span></h2>
+      <div id="getHelpBody"></div>
+      <div class="btn-row"><button class="btn btn-secondary" type="button" onclick="hideGetHelp()" data-i18n="gh.close">Close</button></div>
+    </div>
+  </div>
+  <div id="firstStopOverlay" class="overlay" onclick="if (event.target === this) hideFirstStop()">
+    <div class="overlay-card firststop-card" role="dialog">
+      <div id="firstStopBody"></div>
+      <div class="btn-row"><button class="btn btn-primary" type="button" onclick="hideFirstStop()" data-i18n="help.ok">Got it</button></div>
+    </div>
+  </div>
+
   <div id="helpOverlay" class="overlay" onclick="if (event.target === this) hideHelp()">
     <div class="overlay-card help-card" role="dialog" aria-labelledby="helpTitle">
-      <h2 id="helpTitle">How to use this app</h2>
-      <p class="help-lead">You're checked in to <b id="helpIncident">this incident</b>. This app shows you the
-        incident and lets you report what you see. It does <b>not</b> replace your radio: for anything urgent or
-        life-safety, radio or call the Incident Commander or Safety Officer first.</p>
+      <h2 id="helpTitle" data-i18n="help.title">How this app works</h2>
+      <div class="lang-pick"><button type="button" class="lang-btn" data-lang="en" onclick="setLang('en')">English</button>
+        <button type="button" class="lang-btn" data-lang="es" onclick="setLang('es')">Español</button></div>
+      <ul class="help-lines">
+        <li data-i18n-html="help.l1"></li>
+        <li data-i18n-html="help.l2"></li>
+        <li data-i18n-html="help.l3"></li>
+        <li data-i18n-html="help.l4"></li>
+        <li data-i18n-html="help.l5"></li>
+      </ul>
+      <p class="help-radio" data-i18n="help.radio">Your radio is still the fastest way to get help.</p>
+      <span id="helpIncident" class="hidden"></span>
 
-      <div class="help-sec">
-        <div class="help-h">&#128506; Map</div>
-        <p>The incident map. Tap <b>&#127919; Incident</b> to jump back to the incident, <b>&#9776;</b> for the
-          layer list and legend, and any symbol for its details. The buttons at the bottom right are tools:
-          <b>Trajectory</b> (where floating oil will drift), <b>Gradient</b> (which way the ground runs downhill)
-          and a resource search.</p>
-      </div>
-      <div class="help-sec">
-        <div class="help-h">&#128250; Live</div>
-        <p>Live video from the incident drones, when one is flying.</p>
-      </div>
-      <div class="help-sec">
-        <div class="help-h">&#128205; Add to COP &mdash; report something</div>
-        <p>Oil, a hazard, an injury or near miss, wildlife, a road closure. Tap the small map <b>where it is</b>
-          (not where you're standing), pick the type, describe it and add a photo. It goes on the shared map for
-          everyone. Hazards are under <b>Safety</b>.</p>
-      </div>
-      <div class="help-sec">
-        <div class="help-h">&#128202; Sit Stat &mdash; get your bearings</div>
-        <p>Weather, who's in charge and their phone numbers, the radio plan (ICS 205), the safety plan (HASP),
-          the incident timeline and who's checked in. Check the date on each item: plans are written per shift.</p>
-      </div>
-      <div class="help-sec">
-        <div class="help-h">&#128230; Resources</div>
-        <p>Tell the incident what people and equipment you brought, ask for supplies (follow them under
-          <b>My Requests</b>), and see what's already on scene. New items show <b>Pending review</b> until WRI accepts them.</p>
-      </div>
-      <div class="help-sec">
-        <div class="help-h">214 button &middot; Check Out</div>
-        <p>The round <b>214</b> button is your activity log: note what you did and when. Tap <b>Check Out</b>
-          when you leave the incident.</p>
-      </div>
-
-      <div class="help-sec">
-        <div class="help-h">Words you'll see</div>
+      <details class="help-sec help-words">
+        <summary class="help-h" data-i18n="help.more">More words</summary>
         <dl class="help-terms">
           <dt>COP</dt><dd>Common operating picture: the shared incident map.</dd>
           <dt>Sit Stat</dt><dd>Situation status: the current summary.</dd>
@@ -713,10 +712,10 @@
           <dt>214A / 214</dt><dd>Your own activity log is the 214A; a team&rsquo;s shared unit log is the 214.</dd>
           <dt>WRRL</dt><dd>Western Response Resource List: the regional catalogue of spill companies&rsquo; equipment.</dd>
         </dl>
-      </div>
+      </details>
 
       <div class="btn-row">
-        <button class="btn btn-primary" type="button" onclick="hideHelp()">Got it</button>
+        <button class="btn btn-primary" type="button" onclick="hideHelp()" data-i18n="help.ok">Got it</button>
       </div>
     </div>
   </div>
@@ -724,22 +723,24 @@
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
   <!-- No incident picker on the Gateway (G3 2026-11-10: it listed other clients' incidents).
        The QR link (?incident=) or the access code picks the incident. -->
-  <script src="js/config.js?v=2026-11-10-g3"></script>
-  <script src="js/obstypes.js?v=2026-11-10-g3"></script>
-  <script src="js/api.js?v=2026-11-10-g3"></script>
-  <script src="js/session.js?v=2026-11-10-g3"></script>
-  <script src="js/outbox.js?v=2026-11-10-g3"></script>
-  <script src="js/screens.js?v=2026-11-10-g3"></script>
-  <script src="js/arcgis-auth.js?v=2026-11-10-g3"></script>
-  <script src="js/map.js?v=2026-11-10-g3"></script>
-  <script src="js/maptools.js?v=2026-11-10-g3"></script>
-  <script src="js/recon.js?v=2026-11-10-g3"></script>
-  <script src="js/resources.js?v=2026-11-10-g3"></script>
-  <script src="js/requests.js?v=2026-11-10-g3"></script>
-  <script src="js/sitstat.js?v=2026-11-10-g3"></script>
-  <script src="js/livestream.js?v=2026-11-10-g3"></script>
-  <script src="js/ics214.js?v=2026-11-10-g3"></script>
-  <script src="js/app.js?v=2026-11-10-g3"></script>
+  <script src="js/i18n.js?v=2026-11-10-g4"></script>
+  <script src="js/config.js?v=2026-11-10-g4"></script>
+  <script src="js/obstypes.js?v=2026-11-10-g4"></script>
+  <script src="js/api.js?v=2026-11-10-g4"></script>
+  <script src="js/session.js?v=2026-11-10-g4"></script>
+  <script src="js/outbox.js?v=2026-11-10-g4"></script>
+  <script src="js/screens.js?v=2026-11-10-g4"></script>
+  <script src="js/arcgis-auth.js?v=2026-11-10-g4"></script>
+  <script src="js/map.js?v=2026-11-10-g4"></script>
+  <script src="js/maptools.js?v=2026-11-10-g4"></script>
+  <script src="js/recon.js?v=2026-11-10-g4"></script>
+  <script src="js/resources.js?v=2026-11-10-g4"></script>
+  <script src="js/requests.js?v=2026-11-10-g4"></script>
+  <script src="js/sitstat.js?v=2026-11-10-g4"></script>
+  <script src="js/livestream.js?v=2026-11-10-g4"></script>
+  <script src="js/safety.js?v=2026-11-10-g4"></script>
+  <script src="js/ics214.js?v=2026-11-10-g4"></script>
+  <script src="js/app.js?v=2026-11-10-g4"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.

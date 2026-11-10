@@ -42,8 +42,14 @@
     },
 
     pinOk: {
-      get: function () { return localStorage.getItem(PIN_KEY) === 'true'; },
-      set: function (v) { v ? localStorage.setItem(PIN_KEY, 'true') : localStorage.removeItem(PIN_KEY); }
+      // G4 2026-11-10: an entered code lets this phone check in for 30 minutes; any later
+      // visit without an active check-in asks again (a shared phone's next person got in
+      // without it). Stored as the time it was entered; the old 'true' counts as expired.
+      get: function () {
+        var v = Number(localStorage.getItem(PIN_KEY));
+        return isFinite(v) && v > 0 && Date.now() - v < 30 * 60 * 1000;
+      },
+      set: function (v) { v ? localStorage.setItem(PIN_KEY, String(Date.now())) : localStorage.removeItem(PIN_KEY); }
     }
   };
 })();

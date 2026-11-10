@@ -417,6 +417,51 @@
     .help-terms dd { margin: 0; color: var(--text-muted); line-height: 1.4; }
     .help-card .btn-row { margin-top: 16px; }
 
+    /* G4 2026-11-10: Get help, first stop, safety today, language pick, plain report form */
+    .app-header .gethelp-btn {
+      padding: 6px 10px; min-height: 36px; border-radius: var(--radius-sm); border: 0; cursor: pointer;
+      background: #dc2626; color: #fff; font: 800 0.8rem var(--font); white-space: nowrap;
+      box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.35);
+    }
+    @media (max-width: 420px) { .app-header .user-name { display: none; } .app-header .checkout-btn { padding: 6px 8px; } }
+    .overlay-card.gethelp-card, .overlay-card.firststop-card { text-align: left; max-height: calc(100vh - 40px); overflow-y: auto; }
+    .gethelp-card h2 { text-align: center; color: #fca5a5; }
+    .gh-first { color: var(--text-bright) !important; font-weight: 700; text-align: center; }
+    .gh-note { font-size: 0.85rem; }
+    .call-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-bottom: 10px; text-decoration: none;
+      font-weight: 800; padding: 12px; }
+    .call-btn.big { font-size: 1.15rem; padding: 16px; }
+    .call-btn .call-num { font-weight: 500; font-size: 0.8rem; opacity: 0.9; }
+    .gh-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 10px; }
+    .gh-report { flex: 1 1 140px; display: flex; align-items: center; gap: 8px; text-align: left; min-height: 56px; }
+    .gh-report img { width: 30px; height: 30px; }
+    .gh-hosp { font-size: 0.85rem; color: var(--text); border-top: 1px solid var(--border); padding-top: 10px; }
+    .first-stop { border-left: 4px solid var(--success); margin-bottom: 12px; }
+    .first-stop .fs-row, .safety-today .sf-msg { font-size: 0.92rem; margin: 6px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .first-stop .muted { color: var(--text-muted); }
+    .safety-today { border-left: 4px solid var(--warning); margin-bottom: 12px; }
+    .safety-today .sf-msg { display: block; }
+    .ppe-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .ppe { display: inline-flex; align-items: center; gap: 6px; background: var(--panel-light, rgba(255,255,255,.06));
+      border: 1px solid var(--border); border-radius: 18px; padding: 5px 10px; font-size: 0.85rem; }
+    .ppe-i { font-size: 1.25rem; line-height: 1; }
+    .sf-rule { margin-top: 8px; font-size: 0.9rem; font-weight: 600; color: var(--text-bright); }
+    .lang-pick { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 0 0 14px; font-size: 0.8rem; color: var(--text-muted); }
+    .lang-btn { padding: 6px 12px; border-radius: 16px; border: 1px solid var(--border); background: var(--panel); color: var(--text);
+      font: 600 0.85rem var(--font); cursor: pointer; }
+    .lang-btn.selected { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .help-lines { list-style: none; padding: 0; margin: 0 0 10px; }
+    .help-lines li { font-size: 0.95rem; line-height: 1.45; margin: 0 0 10px; color: var(--text); }
+    .help-radio { font-weight: 700; color: var(--text-bright) !important; }
+    .help-words summary { cursor: pointer; margin-bottom: 6px; }
+    .recon-more { margin: 4px 0 12px; }
+    .recon-more summary { cursor: pointer; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .alert-result { text-align: left; margin: 12px 0; }
+    .alert-result .al-big { font-size: 1.15rem; font-weight: 800; color: var(--success); margin-bottom: 6px; }
+    .alert-result .al-warn { color: var(--warning); }
+    .alert-result .al-small { font-size: 0.8rem; color: var(--text-muted); }
+    body.observer .gethelp-btn { display: none; }
+
     /* G3 2026-11-10: section ages, current-status box, work assignment cards, observer mode */
     .sitstat-section-header { flex-wrap: wrap; gap: 4px 10px; }
     .asof { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
@@ -1730,10 +1775,10 @@
     /* ═══════════════════════════════════════════════════════
        ICS 214 FLOATING BUTTON + PANEL (js/ics214.js)
        ═══════════════════════════════════════════════════════ */
-    .wri-214-fab { position: fixed; left: 12px; bottom: calc(var(--tab-height) + 20px + env(safe-area-inset-bottom, 0px)); z-index: 500;
-      width: 54px; height: 54px; border-radius: 50%; border: 2px solid #fff; background: #EC2329; color: #fff;
-      font: 800 16px/1 system-ui, sans-serif; letter-spacing: .5px; box-shadow: 0 3px 10px rgba(0,0,0,.45); cursor: pointer;
-      display: flex; align-items: center; justify-content: center; padding: 0; }
+    .wri-214-fab { position: fixed; left: 12px; bottom: calc(var(--tab-height) + 72px + env(safe-area-inset-bottom, 0px)); z-index: 500;
+      min-width: 54px; height: 44px; border-radius: 22px; border: 2px solid #fff; background: #EC2329; color: #fff;
+      font: 800 14px/1 system-ui, sans-serif; letter-spacing: .3px; box-shadow: 0 3px 10px rgba(0,0,0,.45); cursor: pointer;
+      display: flex; align-items: center; justify-content: center; padding: 0 14px; }
     .wri-214-fab.ok { background: #16a34a; }
     .wri-214-fab:active { transform: scale(.95); }
     .wri-214-fab.hidden, .wri-214-panel.hidden, .wri-214-load.hidden { display: none; }

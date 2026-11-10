@@ -77,7 +77,8 @@
     var main = document.getElementById('screen-main');
     if (!main) return;
     fab = document.createElement('button');
-    fab.type = 'button'; fab.className = 'wri-214-fab'; fab.textContent = '214';
+    fab.type = 'button'; fab.className = 'wri-214-fab'; fab.textContent = window.t ? t('fab.log') : 'My log';
+    window.addEventListener('wri-lang', function () { if (!fab.classList.contains('ok')) fab.textContent = t('fab.log'); });
     fab.title = 'ICS 214 activity log'; fab.setAttribute('aria-label', 'Open the ICS 214 activity log');
     fab.addEventListener('click', function () { openPanel(false); });
     main.appendChild(fab);   // inside the main screen: hidden with it on sign-in / PIN screens
@@ -111,7 +112,7 @@
       if (e.origin !== location.origin || !d || d.type !== 'wri-214' || d.action !== 'saved') return;
       fab.classList.add('ok'); fab.textContent = '✓';
       clearTimeout(okTimer);
-      okTimer = setTimeout(function () { fab.classList.remove('ok'); fab.textContent = '214'; }, 3000);
+      okTimer = setTimeout(function () { fab.classList.remove('ok'); fab.textContent = window.t ? t('fab.log') : 'My log'; }, 3000);
     });
   }
 
