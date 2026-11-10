@@ -12,10 +12,10 @@
   var voiceIsRecording = false;
   var voiceTranscriptText = '';
 
-  var CSV_FIELDS = ['resource_type', 'identifier', 'capability', 'quantity', 'uom', 'location_name', 'crew_count', 'status', 'notes', '-- skip --'];
+  var CSV_FIELDS = ['resource_type', 'identifier', 'capability', 'quantity', 'uom', 'location_name', 'owner', 'arrived', 'crew_count', 'status', 'notes', '-- skip --'];
   // Plain words for the column picker (G2 2026-11-10: raw field names confused people)
   var CSV_LABELS = { resource_type: 'Type', identifier: 'Name / ID', capability: 'Description', quantity: 'Quantity',
-    uom: 'Unit (EA, ft, gal)', location_name: 'Location', crew_count: 'Crew size', status: 'Status', notes: 'Notes', '-- skip --': "Don't use" };
+    uom: 'Unit (EA, ft, gal)', location_name: 'Location', owner: 'Owner (whose gear)', arrived: 'Arrived', crew_count: 'Crew size', status: 'Status', notes: 'Notes', '-- skip --': "Don't use" };
   var TYPE_OPTIONS = ['Vessel', 'Vehicle', 'Equipment', 'Aircraft', 'Personnel', 'Other'];
 
   // AI / CSV / WRRL types and statuses onto the form's own lists. An unknown
@@ -38,6 +38,42 @@
     if (/out|service|broken|down/.test(k)) return 'out_of_service';
     return 'available';
   }
+  function myCompany() { var s = (window.Session && Session.get()) || {}; return String(s.organization || ''); }
+  function compNorm(s) { return String(s || '').toLowerCase().replace(/pw-test/g, '').replace(/\b(inc|llc|co|corp|company|services?|ltd)\b/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+  function sameCompany(a, b) {
+    var x = compNorm(a), y = compNorm(b);
+    if (!x || !y) return !x;   // no owner given = the person's own
+    return x === y || x.indexOf(y) > -1 || y.indexOf(x) > -1;
+  }
+  // G2b 2026-11-10: "Staging" -> "Sha-Ron Staging", "ICP" -> the ICP entry (0 of 5 matched before)
+  function locNorm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }
+  function matchLocation(text) {
+    var t = locNorm(text);
+    if (!t) return '';
+    var best = '', score = 0;
+    activeLocations.forEach(function (loc) {
+      var n = locNorm(loc.name), ty = locNorm(loc.type), sc = 0;
+      if (n === t) sc = 100;
+      else if ((' ' + n + ' ').indexOf(' ' + t + ' ') > -1) sc = 60;          // "staging" in "sha ron staging"
+      else if (t.indexOf(n) > -1) sc = 50;                                      // "sha ron staging area" vs "sha ron staging"
+      else if (ty && (' ' + ty + ' ').indexOf(' ' + t + ' ') > -1) sc = 40;   // "icp" -> a location of type ICP
+      else if (/^(icp|command post|incident command)/.test(t) && /icp|command/.test(n + ' ' + ty)) sc = 40;
+      else {
+        var tw = t.split(' ').filter(function (w) { return w.length > 2; });
+        var hit = tw.filter(function (w) { return (' ' + n + ' ').indexOf(' ' + w + ' ') > -1; }).length;
+        if (tw.length && hit === tw.length) sc = 30;
+      }
+      if (sc > score) { score = sc; best = loc.name; }
+    });
+    return best;
+  }
+  window.matchLocation = matchLocation;
+  function qtyPrefix(r) {
+    var q = String(r.quantity || '').trim(), u = String(r.uom || '').trim();
+    var single = (!q || q === '1') && (!u || /^(ea|each|unit|units)$/i.test(u));
+    return single ? '' : 'Qty ' + (q || '1') + (u ? ' ' + u : '');
+  }
+
   function dupKey(r) { return String((r && r.identifier) || '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
   // Everything that fills the review list ADDS to it (G2: a photo scan used to
@@ -48,8 +84,13 @@
     (list || []).forEach(function (r) {
       r.resource_type = normType(r.resource_type);
       r.status = normStatus(r.status);
-      // a place that isn't on the incident's list shows in the "not listed" box instead of vanishing
-      if (r.location_name && !isListedLocation(r.location_name)) r.location_name_custom = r.location_name;
+      // a place close to one on the incident's list becomes that one; anything else shows in the
+      // "not listed" box instead of vanishing
+      if (r.location_name && !isListedLocation(r.location_name)) {
+        var m = matchLocation(r.location_name);
+        if (m) { r._loc_from = r.location_name; r.location_name = m; delete r.location_name_custom; }
+        else r.location_name_custom = r.location_name;
+      }
       pendingResources.push(r);
     });
     markDuplicates();
@@ -342,6 +383,8 @@
       else if (/qty|quantity|^count$|^#$|how many|number of/.test(l) && !/crew|pax|people/.test(l)) take(h, 'quantity');
       else if (/crew|pax|personnel|staff|people/.test(l)) take(h, 'crew_count');
       else if (/locat|where|site|staging|deliver/.test(l)) take(h, 'location_name');
+      else if (/owner|owned|vendor|supplier|rental|belongs/.test(l)) take(h, 'owner');
+      else if (/arriv|eta|time in|on scene/.test(l)) take(h, 'arrived');
       else if (/status|state|avail/.test(l)) take(h, 'status');
       else if (/note|comment|remark/.test(l)) take(h, 'notes');
       else if (/type|category|kind|class/.test(l)) take(h, 'resource_type');
@@ -408,11 +451,11 @@
       Object.keys(colMap).forEach(function (col) {
         r[colMap[col]] = String(row[parseInt(col, 10)] || '').trim();
       });
-      // Quantity (+ unit) has no column of its own on the resource record: it leads the notes.
-      var q = String(r.quantity || '').trim(), u = String(r.uom || '').trim();
-      var single = (!q || q === '1') && (!u || /^(ea|each|unit|units)$/i.test(u));
-      if (!single) r.notes = ('Qty ' + (q || '1') + (u ? ' ' + u : '') + (r.notes ? '. ' + r.notes : '')).trim();
-      delete r.quantity; delete r.uom;
+      // G2b 2026-11-10: quantity + unit stay real fields until submit (they lead the notes there);
+      // arrival time goes in the notes; an owner that isn't the checked-in company is flagged
+      if (r.arrived) { r.notes = ('Arrived ' + r.arrived + (r.notes ? '. ' + r.notes : '')).trim(); }
+      delete r.arrived;
+      if (r.owner && !sameCompany(r.owner, myCompany())) { r._foreign = r.owner; r._keep = false; }
       return r;
     }).filter(function (r) {
       return r.identifier || r.capability || r.resource_type;
@@ -539,7 +582,12 @@
       item.location_name = loc;
       if (!isListedLocation(loc)) item.location_name_custom = loc;
     }
-    addToReview([item]);
+    // G2b: "2 vac trucks" = two items, each with its own name
+    var n = Math.max(1, Math.min(20, parseInt((document.getElementById('manualQty') || {}).value, 10) || 1));
+    var batch = [];
+    for (var k = 1; k <= n; k++) batch.push(Object.assign({}, item, { identifier: n > 1 ? identifier + ' ' + k : identifier }));
+    addToReview(batch);
+    var mq = document.getElementById('manualQty'); if (mq) mq.value = '1';
     setManualType('');
 
     document.getElementById('manualIdentifier').value = '';
@@ -606,17 +654,34 @@
   window.renderWrrlOrgResults = function () {
     var box = document.getElementById('wrrlOrgResults');
     if (!wrrlOrgs) { box.innerHTML = ''; return; }
-    var q = (document.getElementById('wrrlOrgSearch').value || '').trim().toUpperCase();
-    var matches = q ? wrrlOrgs.filter(function (o) { return o.code.toUpperCase().indexOf(q) > -1; }) : wrrlOrgs;
-    // Free-text org names ("County Fire Dept") won't match a code — show the
-    // full code list rather than a dead end.
-    if (!matches.length) matches = wrrlOrgs;
-    var html = '';
-    matches.forEach(function (o) {
-      html += '<button type="button" class="wrrl-org-row" data-org="' + escAttr(o.code) + '">' +
+    var raw = (document.getElementById('wrrlOrgSearch').value || '').trim();
+    var q = raw.toUpperCase();
+    var row = function (o) {
+      return '<button type="button" class="wrrl-org-row" data-org="' + escAttr(o.code) + '">' +
         '<span>' + esc(o.code) + '</span><span class="wrrl-org-count">' + o.count + ' items</span></button>';
-    });
-    box.innerHTML = html;
+    };
+    // G2b 2026-11-10: open on the checked-in company's own list; other companies' lists are a
+    // deliberate step (Morgan could open WRI's catalogue and tick its gear as his).
+    var mine = myCompany();
+    if (!raw || compNorm(raw) === compNorm(mine)) {
+      var words = compNorm(mine).toUpperCase().split(' ').filter(Boolean);
+      var initials = words.map(function (w) { return w[0]; }).join('');
+      var ours = wrrlOrgs.filter(function (o) {
+        var c = String(o.code || '').toUpperCase();
+        return c && (c === initials || words.indexOf(c) > -1 || (words[0] && words[0].length > 2 && c.indexOf(words[0]) === 0));
+      });
+      var html0 = ours.length
+        ? '<div class="wrrl-yours">Your company:</div>' + ours.map(row).join('')
+        : '<div class="wrrl-yours">' + esc(mine || 'Your company') + ' is not on this list. Use <b>Fill Out Form</b> or <b>Upload File</b> instead.</div>';
+      html0 += '<details class="wrrl-others"><summary>Another company\'s list</summary>' +
+        '<p class="wrrl-warn">&#9888; Only open another company\'s list if you are logging <b>their</b> gear for them.</p>' +
+        wrrlOrgs.filter(function (o) { return ours.indexOf(o) < 0; }).map(row).join('') + '</details>';
+      box.innerHTML = html0;
+      return;
+    }
+    var matches = wrrlOrgs.filter(function (o) { return o.code.toUpperCase().indexOf(q) > -1; });
+    if (!matches.length) { box.innerHTML = '<div class="wrrl-yours">No company code matches "' + esc(raw) + '".</div>'; return; }
+    box.innerHTML = matches.map(row).join('');
   };
 
   window.loadWrrlOrg = function (code) {
@@ -792,6 +857,19 @@
       html += '<button class="btn-icon" onclick="removeResource(' + idx + ')" title="Remove" style="color:var(--danger);">&#10005;</button>';
       html += '</div>';
       if (r._dup) html += '<div class="card-dup">&#9888; Possible duplicate: ' + esc(r._dup) + '</div>';
+      if (r._foreign) {
+        html += '<div class="card-foreign' + (r._keep ? ' kept' : '') + '">&#9888; Owned by <b>' + esc(r._foreign) + '</b> (not your company). ' +
+          (r._keep ? 'Kept: the owner goes in the notes.' : 'It will NOT be sent unless you keep it.') +
+          ' <button type="button" class="btn btn-sm btn-secondary" onclick="toggleKeepForeign(' + idx + ')">' + (r._keep ? 'Don\'t send it' : 'Keep it') + '</button></div>';
+      }
+      // one line per item; tap to edit (cards that need a choice start open)
+      var open = r._open || !r.resource_type || !r.identifier || lowConf.length;
+      html += '<button type="button" class="card-summary" onclick="toggleCard(' + idx + ')">' +
+        '<span class="cs-name">' + esc(maskSerials(r.identifier || '(no name)')) + '</span>' +
+        '<span class="cs-meta">' + esc([qtyPrefix(r).replace(/^Qty /, ''), r.location_name || r.location_name_custom || 'no location'].filter(Boolean).join(' · ')) +
+        (r._loc_from ? ' <span class="cs-from">(from "' + esc(r._loc_from) + '")</span>' : '') + '</span>' +
+        '<span class="cs-edit">' + (open ? 'Done' : 'Edit') + '</span></button>';
+      html += '<div class="card-fields' + (open ? '' : ' hidden') + '">';
 
       html += '<div class="card-field' + (lowConf.indexOf('resource_type') > -1 || !r.resource_type ? ' low-confidence' : '') + '">';
       html += '<label>Type</label>';
@@ -811,6 +889,10 @@
       html += '<label>Capability</label>';
       html += '<input type="text" value="' + escAttr(r.capability || '') + '" onchange="updatePendingField(' + idx + ', \'capability\', this.value)">';
       html += '</div>';
+
+      html += '<div class="card-field card-qty"><div><label>Quantity</label>';
+      html += '<input type="number" min="1" value="' + escAttr(r.quantity || '') + '" placeholder="1" onchange="updatePendingField(' + idx + ', \'quantity\', this.value)"></div>';
+      html += '<div><label>Unit</label><input type="text" value="' + escAttr(r.uom || '') + '" placeholder="EA, ft, gal" onchange="updatePendingField(' + idx + ', \'uom\', this.value)"></div></div>';
 
       html += '<div class="card-field">';
       html += '<label>Crew Count</label>';
@@ -860,10 +942,20 @@
       html += '<textarea onchange="updatePendingField(' + idx + ', \'notes\', this.value)">' + esc(r.notes || '') + '</textarea>';
       html += '</div>';
 
+      html += '</div>';   // card-fields
       html += '</div>';
     });
 
     container.innerHTML = html;
+    var bulk = document.getElementById('confirmBulk');
+    if (bulk) {
+      bulk.style.display = pendingResources.length > 1 ? '' : 'none';
+      var sel = document.getElementById('bulkLocation');
+      if (sel && window.fillLocationSelects) fillLocationSelects();
+    }
+    var foreign = pendingResources.filter(function (r) { return r._foreign && !r._keep; }).length;
+    document.getElementById('confirmTitle').textContent = 'Review ' + (pendingResources.length - foreign) + ' item(s)' +
+      (foreign ? ' (' + foreign + ' not yours, not sent)' : '');
     document.getElementById('confirmSubmitArea').style.display = pendingResources.length > 0 ? 'block' : 'none';
   }
 
@@ -880,6 +972,29 @@
     if (field === 'resource_type') renderConfirmCards();   // badge + "pick a type" highlight
   };
   window.recheckDuplicates = function () { markDuplicates(); renderConfirmCards(); };
+  window.toggleCard = function (idx) { var r = pendingResources[idx]; if (!r) return; r._open = !r._open; renderConfirmCards(); };
+  window.toggleKeepForeign = function (idx) { var r = pendingResources[idx]; if (!r) return; r._keep = !r._keep; renderConfirmCards(); };
+  window.applyBulkLocation = function () {
+    var sel = document.getElementById('bulkLocation'), other = document.getElementById('bulkLocationOther');
+    var v = sel ? sel.value : '';
+    if (v === '__custom__') v = (other && other.value.trim()) || '';
+    if (!v) { showToast('Pick a location first.', true); return; }
+    pendingResources.forEach(function (r) {
+      r.location_name = v; delete r._loc_from;
+      if (isListedLocation(v)) delete r.location_name_custom; else r.location_name_custom = v;
+    });
+    renderConfirmCards();
+  };
+  window.addAnotherLikeLast = function () {
+    var last = pendingResources[pendingResources.length - 1];
+    if (!last) return;
+    var c = JSON.parse(JSON.stringify(last));
+    var m = /^(.*?)(\d+)$/.exec(String(c.identifier || '').trim());
+    c.identifier = m ? m[1] + (Number(m[2]) + 1) : (c.identifier ? c.identifier + ' 2' : '');
+    delete c.wrrl_id; c._open = true;
+    addToReview([c]);
+    renderConfirmCards();
+  };
 
   window.handleLocationSelect = function (idx, selectEl) {
     if (!pendingResources[idx]) return;
@@ -933,7 +1048,7 @@
     return html + '<option value="__custom__">Location not listed...</option>';
   }
   function fillLocationSelects() {
-    ['manualLocation', 'rrDeliverySel'].forEach(function (id) {
+    ['manualLocation', 'rrDeliverySel', 'bulkLocation'].forEach(function (id) {
       var el = document.getElementById(id);
       if (!el) return;
       var keep = el.value;
@@ -962,13 +1077,17 @@
      ═══════════════════════════════════════════ */
   window.submitAllResources = function () {
     if (!pendingResources.length) return;
-    var untyped = pendingResources.filter(function (r) { return !r.resource_type; }).length;
+    var sendable = pendingResources.filter(function (r) { return !(r._foreign && !r._keep); });
+    if (!sendable.length) { showToast('Nothing to send: every item is someone else\'s. Tap "Keep it" on the ones you brought.', true); return; }
+    var untyped = sendable.filter(function (r) { return !r.resource_type; }).length;
     if (untyped) {
       showToast('Pick a type for ' + untyped + ' item(s) before submitting.', true);
       return;
     }
 
-    var cleaned = pendingResources.map(function (r) {
+    var cleaned = sendable.map(function (r) {
+      var pre = [qtyPrefix(r), r._foreign ? 'Owner: ' + r._foreign : ''].filter(Boolean).join('. ');
+      r = Object.assign({}, r, { notes: [pre, r.notes].filter(Boolean).join('. ') });
       return {
         resource_type: r.resource_type || 'Other',
         identifier: r.identifier || '',
@@ -1059,7 +1178,8 @@
           html += '<div class="res-info">';
           html += '<div class="res-name"><span class="badge badge-' + getTypeBadgeClass(r.resource_type) +
             '" style="margin-right:6px;">' + esc(r.resource_type || 'other') + '</span>' + esc(r.identifier || 'Unknown') + '</div>';
-          html += '<div class="res-detail">' + esc(r.capability || '') + (r.location_name ? ' | ' + esc(r.location_name) : '') + '</div>';
+          var qm = /^Qty ([\d.]+(?: [^.]+)?)/.exec(String(r.notes || ''));
+          html += '<div class="res-detail">' + [qm ? qm[1] : '', esc(maskSerials(r.capability || '')), r.location_name ? esc(r.location_name) : ''].filter(Boolean).join(' | ') + '</div>';
           if (String(r.review_status || '').toLowerCase() === 'rejected' && r.notes) {
             html += '<div class="res-detail" style="color:var(--danger);">Reason: ' + esc(r.notes) + '</div>';
           }

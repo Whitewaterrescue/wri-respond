@@ -96,7 +96,33 @@
       var b = byId(id);
       if (b) b.disabled = (navigator.onLine === false);
     });
+    checkDrones();
   };
+
+  // G2b 2026-11-10: ask the drone server first, so the tab says "no drone video right now"
+  // instead of a viewer stuck on "Connecting…" with "The controller is off" tiles.
+  var checkedAt = 0;
+  function checkDrones() {
+    var st = byId('liveState'), btn = byId('droneWatchBtn');
+    if (!st || !btn || frame || Date.now() - checkedAt < 20000) return;
+    checkedAt = Date.now();
+    var tt = window.t || function (k) { return k; };
+    st.textContent = tt('lv.checking');
+    var inc = String(((window.APP && APP.incident) || {}).incident_id || '');
+    var pin = window._gwPin || '';
+    var dev = ''; try { dev = localStorage.getItem('wri_respond_device') || ''; } catch (e) {}
+    if (!pin || !inc || navigator.onLine === false) { st.textContent = tt('lv.unknown'); btn.classList.remove('hidden'); return; }
+    var origin = (CONFIG.DRONE_LIVE_ORIGIN || 'https://drone.whitewaterrescue.com');
+    fetch(origin + '/api/live/status', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ incident_id: inc, pin: pin, device: dev || 'wri-respond' }) })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) {
+        var n = Number(j && j.streaming) || 0;
+        st.textContent = n ? tt('lv.live', { n: n }) : tt('lv.none');
+        btn.classList.toggle('hidden', !n);
+      })
+      .catch(function () { checkedAt = 0; st.textContent = tt('lv.unknown'); btn.classList.remove('hidden'); });
+  }
 
   /* The Nova URL lives in config.js only — the two "Open" anchors get it here
    * rather than being hardcoded a third and fourth time in the markup. */

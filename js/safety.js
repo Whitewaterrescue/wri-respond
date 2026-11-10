@@ -150,11 +150,19 @@
       if (sm.ppe) out += '<div class="sf-msg"><b>' + e(t('sf.wear')) + '</b> ' + e(sm.ppe) + '</div>';
     }
     if (ppe.length && !(sm && sm.ppe)) {
-      var seen = {};
-      out += '<div class="sf-wear"><b>' + e(t('sf.wear')) + '</b><div class="ppe-grid">' + ppe.map(function (p) {
-        var it = ppeItem(p); if (seen[it.label]) return ''; seen[it.label] = 1;
-        return '<span class="ppe"><span class="ppe-i">' + it.icon + '</span>' + e(it.label) + '</span>';
-      }).join('') + '</div></div>';
+      // G2b 2026-11-10: grouped, from the HASP list only (never invented): everyone / water / by task
+      var WATER = /pfd|life jacket|drysuit|dry suit|wetsuit|float/i, TASK = /respirator|chemical|face shield|tyvek|scba|apron/i;
+      var groups = { everyone: [], water: [], task: [] }, seen = {};
+      ppe.forEach(function (p) {
+        var it = ppeItem(p); if (seen[it.label]) return; seen[it.label] = 1;
+        (WATER.test(p) ? groups.water : TASK.test(p) ? groups.task : groups.everyone).push(it);
+      });
+      var chips = function (list) { return list.map(function (it) { return '<span class="ppe"><span class="ppe-i">' + it.icon + '</span>' + e(it.label) + '</span>'; }).join(''); };
+      out += '<div class="sf-wear"><b>' + e(t('sf.wear')) + '</b>';
+      [['everyone', 'sf.everyone'], ['water', 'sf.water'], ['task', 'sf.task']].forEach(function (g) {
+        if (groups[g[0]].length) out += '<div class="ppe-group">' + e(t(g[1])) + '</div><div class="ppe-grid">' + chips(groups[g[0]]) + '</div>';
+      });
+      out += '</div>';
     }
     if (h.meetingPoint) out += '<div class="sf-msg"><b>' + e(t('sf.meet')) + '</b> ' + e(h.meetingPoint) + '</div>';
     out += '<div class="sf-rule">&#9995; ' + e(t('sf.rule')) + '</div>';

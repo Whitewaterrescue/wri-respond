@@ -279,7 +279,7 @@
         currentActions.forEach(function (a) {
           html += '<tr><td style="text-align:center;"><span class="badge badge-active" style="font-weight:700;">C</span></td>';
           html += '<td style="white-space:nowrap;">' + esc(a.datetime || '') + '</td>';
-          html += '<td>' + esc(a.action || '') + '</td></tr>';
+          html += '<td>' + esc(maskSerials(a.action || '')) + '</td></tr>';
         });
         plannedActions.forEach(function (a) {
           html += '<tr><td style="text-align:center;"><span class="badge badge-pending" style="font-weight:700;">P</span></td>';
@@ -372,7 +372,7 @@
             html += '<span class="t-name">' + esc(maskSerials(tc.identifier || 'Unknown')) + '</span>';
             html += '<span class="badge badge-' + getTypeBadgeClass(tc.type) + '">' + esc(tc.type || 'other') + '</span>';
             html += '</div>';
-            if (tc.capability) html += '<div class="t-type">' + esc(tc.capability) + '</div>';
+            if (tc.capability) html += '<div class="t-type">' + esc(maskSerials(tc.capability)) + '</div>';
             html += '<div class="t-detail">Status: ' + esc(tc.status || 'Unknown') + '</div>';
             html += '</div>';
           });

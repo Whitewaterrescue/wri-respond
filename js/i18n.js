@@ -64,7 +64,13 @@
       'help.l3': '<b>&#128202; Status</b>: where to go, who to ask, and today\'s safety rules.',
       'help.l4': '<b>&#128506; Map</b>: where things are. &#127919; takes you back to the incident.',
       'help.l5': '<b>&#128221; My log</b>: write down what you did. Tap <b>Check out</b> when you leave.',
-      'help.more': 'More words', 'help.ok': 'Got it'
+      'help.more': 'More words', 'help.ok': 'Got it',
+      'lv.title': 'Drone video', 'lv.checking': 'Checking for drone video…', 'lv.watch': 'Watch drone video',
+      'lv.none': 'No drone video right now. It shows here when a WRI drone is flying and streaming.',
+      'lv.live': '{n} drone(s) streaming now.', 'lv.unknown': "Couldn't check for drone video. You can still try.",
+      'lv.other': 'Other video feed (Nova)',
+      'sf.everyone': 'Everyone', 'sf.water': 'On or near the water', 'sf.task': 'If your task needs it (ask your boss)',
+      'ty.reqs': 'Your supply requests: {ids}. To follow them, call the WRI 24-hour line {line}.'
     },
     es: {
       'lang.label': 'Idioma',
@@ -113,7 +119,13 @@
       'help.l3': '<b>&#128202; Estado</b>: adónde ir, a quién preguntar y las reglas de seguridad de hoy.',
       'help.l4': '<b>&#128506; Mapa</b>: dónde están las cosas. &#127919; lo regresa al incidente.',
       'help.l5': '<b>&#128221; Mi registro</b>: anote lo que hizo. Toque <b>Salir</b> cuando se vaya.',
-      'help.more': 'Más palabras (en inglés)', 'help.ok': 'Entendido'
+      'help.more': 'Más palabras (en inglés)', 'help.ok': 'Entendido',
+      'lv.title': 'Video del dron', 'lv.checking': 'Buscando video del dron…', 'lv.watch': 'Ver video del dron',
+      'lv.none': 'No hay video del dron ahora. Aparece aquí cuando un dron de WRI está volando y transmitiendo.',
+      'lv.live': '{n} dron(es) transmitiendo ahora.', 'lv.unknown': 'No pudimos revisar si hay video. Puede intentarlo igual.',
+      'lv.other': 'Otra transmisión (Nova)',
+      'sf.everyone': 'Todos', 'sf.water': 'En el agua o cerca del agua', 'sf.task': 'Si su tarea lo necesita (pregunte a su jefe)',
+      'ty.reqs': 'Sus pedidos: {ids}. Para seguirlos, llame a la línea de WRI de 24 horas {line}.'
     }
   };
 
