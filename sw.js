@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-11-10-g6';
+var CACHE_VERSION = '2026-11-10-g7';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');

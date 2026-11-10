@@ -223,7 +223,9 @@
     // P5 Recon move: the recon public view moves from WRI_Recon_v3_public to WRI_Incident_Ops_Recon_public
     { re: /\/WRI_(Recon_v3|Incident_Ops_Recon)_public\//i, field: 'project_name' },
     { re: /\/WRI_Incident_360_Panoramas_pub\//i, field: 'project_name' },
-    { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' }
+    { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' },
+    // 2026-11-10: evacuation rings are per incident (Project = the project key)
+    { re: /\/Evacuation_Zones[^/]*\//i, field: 'Project' }
   ];
   function scopeLayerToIncident(lyr, inc) {
     var id = String(inc.incident_id || ''), key = String(inc.project_key || inc.recon_project || '');
@@ -460,25 +462,6 @@
   }
   window.wriScopeResponsePlans = function () { scopeResponsePlans(mapView && mapView.map, mapView); };   // test handle
 
-  function buildGoToIncident() {
-    var btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'map-goto-incident';
-    btn.innerHTML = '&#127919; Incident';
-    btn.title = 'Go back to the incident';
-    btn.onclick = function () {
-      if (btn.disabled) return;
-      btn.disabled = true;
-      btn.innerHTML = '<span class="btn-spin"></span> Incident';
-      goToIncident(mapView, true).then(function (ok) {
-        btn.disabled = false;
-        btn.innerHTML = '&#127919; Incident';
-        if (!ok && window.showToast) showToast('Could not find the incident location', true);
-      });
-    };
-    return btn;
-  }
-
   window.initMainMap = function () {
     var inc0 = (window.APP && APP.incident) || {};
     // Which stable map a staff sign-in would switch to. Resolved before the SDK
@@ -651,7 +634,6 @@
           layerToggle.appendChild(layerBtn);
           layerToggle.appendChild(layerPanel);
           mapView.ui.add(layerToggle, 'top-left');
-          mapView.ui.add(buildGoToIncident(), 'top-left');
           // Key places (same list as the Field App's): command post, staging, ramps, decon, LZs, aid, hospitals
           if (window.initKeyPlaces) mapView.ui.add(initKeyPlaces(mapView, { Graphic: Graphic }), 'top-left');
 
