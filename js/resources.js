@@ -1092,8 +1092,8 @@
             html += '<div class="resource-item">';
             html += '<div class="res-info">';
             html += '<div class="res-name"><span class="badge badge-' + getTypeBadgeClass(r.resource_type) +
-              '" style="margin-right:6px;">' + esc(r.resource_type || 'other') + '</span>' + esc(r.identifier || 'Unknown') + '</div>';
-            html += '<div class="res-detail">' + esc(r.capability || '') + (r.crew_count ? ' | Crew: ' + esc(r.crew_count) : '') + '</div>';
+              '" style="margin-right:6px;">' + esc(r.resource_type || 'other') + '</span>' + esc(maskSerials(r.identifier || 'Unknown')) + '</div>';
+            html += '<div class="res-detail">' + esc(maskSerials(r.capability || '')) + (r.crew_count ? ' | Crew: ' + esc(r.crew_count) : '') + '</div>';
             html += '</div>';
             // Not accepted by WRI yet = Pending everywhere, never "available" (G2)
             var pendingReview = /^pending/i.test(String(r.review_status || ''));

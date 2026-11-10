@@ -414,6 +414,51 @@
   }
   window.wriGoToIncident = function () { return goToIncident(mapView, true); };   // help sheet + test handle
 
+  // G3 2026-11-10 (Cody: filter by location): the gateway map's "Response Plans" group holds
+  // every river's plan; an incident's viewers see only the plan points within PLAN_RADIUS_MI of
+  // the incident site. A plan layer with nothing in range leaves the layer list.
+  var PLAN_RADIUS_MI = 50;
+  function inPlanGroup(lyr) {
+    for (var p = lyr.parent; p && p.title !== undefined; p = p.parent) {
+      if (/response plans/i.test(String(p.title || ''))) return true;
+    }
+    return false;
+  }
+  function scopeResponsePlans(map, view) {
+    if (!map || !map.allLayers || !view) return;
+    incidentSite().then(function (site) {
+      if (!site) return;
+      loadArcGIS().then(function (require) {
+        require(['esri/geometry/Point', 'esri/layers/support/FeatureFilter'], function (Point, FeatureFilter) {
+          var pt = new Point({ longitude: site.lon, latitude: site.lat });
+          var groups = {};
+          map.allLayers.forEach(function (lyr) {
+            if (lyr.type !== 'feature' || !inPlanGroup(lyr)) return;
+            if (lyr.parent && lyr.parent.type === 'group') groups[lyr.parent.uid] = lyr.parent;
+            lyr.when(function () {
+              return lyr.queryFeatureCount({ geometry: pt, distance: PLAN_RADIUS_MI, units: 'miles', spatialRelationship: 'intersects' });
+            }).then(function (n) {
+              if (!n) { lyr.visible = false; lyr.listMode = 'hide'; tidyGroups(); return; }
+              return view.whenLayerView(lyr).then(function (lv) {
+                lv.filter = new FeatureFilter({ geometry: pt, distance: PLAN_RADIUS_MI, units: 'miles', spatialRelationship: 'intersects' });
+              });
+            }).catch(function () {});
+          });
+          // a group whose plan layers are all out of range leaves the list too
+          function tidyGroups() {
+            Object.keys(groups).forEach(function (k) {
+              var g = groups[k];
+              if (/^response plans$/i.test(String(g.title || ''))) return;   // keep the top group
+              var any = g.layers.some(function (l) { return l.listMode !== 'hide'; });
+              if (!any) g.listMode = 'hide';
+            });
+          }
+        });
+      });
+    });
+  }
+  window.wriScopeResponsePlans = function () { scopeResponsePlans(mapView && mapView.map, mapView); };   // test handle
+
   function buildGoToIncident() {
     var btn = document.createElement('button');
     btn.type = 'button';
@@ -608,6 +653,7 @@
           mapView.ui.add(buildGoToIncident(), 'top-left');
 
           if (usingWebMap) scopeMapToIncident(map);
+          if (usingWebMap) scopeResponsePlans(map, mapView);
 
           // On a webmap, wire attachment-aware popups onto any feature layer
           // that supports attachments (anonymous fetch — no token, no proxy).

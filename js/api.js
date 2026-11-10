@@ -119,6 +119,8 @@
     } catch (e) { return ''; }
   }
   window.incidentPin = incidentPin;
+  // G3 2026-11-10: the access code found the incident (no picker): pin this phone to it.
+  window.setIncidentPinValue = function (id) { try { if (id) localStorage.setItem(PIN_KEY, String(id)); } catch (e) {} };
   window.incidentPinFromUrl = function () { return /[?&]incident=[^&#]+/.test(location.search); };
   window.clearIncidentPin = function () { try { localStorage.removeItem(PIN_KEY); localStorage.removeItem('wri_incident_choice'); } catch (e) {} };
 
@@ -167,3 +169,28 @@
     return apiGet(mode, Object.assign({ pin: pin }, params || {}));
   };
 })();
+
+/* G3 2026-11-10: device serial numbers (drone/aircraft SNs) don't belong on an outside
+ * viewer's screen: any 10+ character token mixing letters and digits shows as …last4. */
+window.maskSerials = function (text) {
+  return String(text == null ? '' : text).replace(/\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{10,}\b/g,
+    function (t) { return '\u2026' + t.slice(-4); });
+};
+/* Tolerant date/time read for the sheet strings Sit Stat carries (ISO, "MM/dd/yyyy HH:mm",
+ * "11/5/2026 4:10 PM", Date strings). Returns ms or NaN. */
+window.parseWhen = function (v) {
+  if (v == null || v === '') return NaN;
+  if (typeof v === 'number') return v;
+  var s = String(v).trim();
+  var d = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);   // a bare date is that LOCAL day, not UTC midnight
+  if (d) return new Date(Number(d[1]), Number(d[2]) - 1, Number(d[3])).getTime();
+  var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[ ,T]+(\d{1,2}):(\d{2})(?::\d{2})?\s*([AaPp][Mm])?)?/.exec(s);
+  if (m) {
+    var y = Number(m[3]); if (y < 100) y += 2000;
+    var h = Number(m[4] || 0); var ap = (m[6] || '').toLowerCase();
+    if (ap === 'pm' && h < 12) h += 12; if (ap === 'am' && h === 12) h = 0;
+    return new Date(y, Number(m[1]) - 1, Number(m[2]), h, Number(m[5] || 0)).getTime();
+  }
+  var t = Date.parse(s.replace(/^(\d{4}-\d{2}-\d{2}) (\d)/, '$1T$2'));
+  return isNaN(t) ? NaN : t;
+};

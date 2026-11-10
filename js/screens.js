@@ -186,9 +186,19 @@
     }
     errEl.textContent = 'Verifying...';
     pinSubmitting = true;
-    // Cheap validity probe: the 'users' mode is PIN-gated; a wrong PIN
-    // rejects with code pin_invalid, a right one returns (possibly empty) users.
-    apiGet('users', { pin: pin, q: 'zz' })
+    // G3 2026-11-10: with no QR link (no ?incident=, no earlier pick) the CODE finds the
+    // incident, so no list of open incidents is ever shown. With a link: the old probe
+    // (the 'users' mode is PIN-gated: pin_invalid, or (possibly empty) users).
+    var codeFirst = !drainPinMode && !(window.incidentPin && incidentPin());
+    var check = codeFirst
+      ? apiGet('pinincident', { pin: pin }).then(function (inc) {
+          if (!inc || !inc.incident_id) throw { code: 'pin_invalid' };
+          if (window.setIncidentPinValue) setIncidentPinValue(inc.incident_id);
+          if (window.APP) APP.incident = inc;
+          if (window.setIncidentName) setIncidentName();
+        })
+      : apiGet('users', { pin: pin, q: 'zz' });
+    check
       .then(function () {
         pinSubmitting = false;
         window._gwPin = pin;
@@ -393,16 +403,26 @@
     // G2 2026-11-10: "I brought equipment or a crew" goes straight to logging it
     var hasResEl = document.getElementById('signinHasResources');
     var hasResources = !!(hasResEl && hasResEl.checked);
+    // G3 2026-11-10: a client / agency observer watching remotely gets no safety-briefing
+    // question (they get no briefing) and a read-only app.
+    var obsEl = document.getElementById('signinObserver');
+    var observer = !!(obsEl && obsEl.checked);
+    if (observer) hasResources = false;
+    if (!observer && !document.getElementById('signinSafetyBriefing').checked) {
+      showToast('Confirm the safety briefing, or tick "observing remotely".', true);
+      btn.disabled = false; btn.textContent = 'Check In';
+      return;
+    }
     var payload = {
       pin: window._gwPin,
       name: document.getElementById('signinName').value.trim(),
       organization: document.getElementById('signinOrg').value.trim(),
-      role: '',
+      role: observer ? 'Observer' : '',
       phone: contact.phone,
       email: contact.email,
       checkin_location: '',
       work_description: '',
-      safety_briefing: document.getElementById('signinSafetyBriefing').checked,
+      safety_briefing: !observer && document.getElementById('signinSafetyBriefing').checked,
       certifications: []
     };
 
@@ -429,6 +449,10 @@
           return;
         }
         Session.set(result);
+        try {
+          if (observer && result.checkin_id) localStorage.setItem('wri_respond_observer', String(result.checkin_id));
+          else localStorage.removeItem('wri_respond_observer');
+        } catch (eObs) {}
         if (window.APP) {
           APP.session = Session.get();
           if (result.incident) APP.incident = result.incident;
@@ -574,6 +598,7 @@
     var inc = (window.APP && APP.incident) || {};
     document.getElementById('headerUser').textContent = s.name || '';
     document.getElementById('headerIncident').textContent = inc.incident_name || '';
+    applyObserverMode();
     showScreen('main');
     switchTab('map'); // lazily boots the map on first entry
     if (!helpSeen()) showHelp();
@@ -600,6 +625,25 @@
   function helpSeen() {
     try { return localStorage.getItem(HELP_SEEN_KEY) === '1'; } catch (e) { return true; }
   }
+
+  /* Observer = read-only: no Add to COP, no logging resources or requests, no 214. */
+  var OBSERVER_KEY = 'wri_respond_observer';   // checkin_id of an observer check-in (survives a session refresh)
+  function isObserver() {
+    var s = (window.Session && Session.get()) || {};
+    if (/^observer$/i.test(String(s.role || ''))) return true;
+    try { return !!s.checkin_id && localStorage.getItem(OBSERVER_KEY) === String(s.checkin_id); } catch (e) { return false; }
+  }
+  window.isObserver = isObserver;
+  function applyObserverMode() { document.body.classList.toggle('observer', isObserver()); }
+  window.applyObserverMode = applyObserverMode;
+  window.onObserverToggle = function (el) {
+    var safety = document.getElementById('signinSafetyGroup');
+    var equip = document.getElementById('signinHasResourcesGroup');
+    if (safety) safety.classList.toggle('hidden', !!el.checked);
+    if (equip) equip.classList.toggle('hidden', !!el.checked);
+    var sb = document.getElementById('signinSafetyBriefing');
+    if (sb) sb.required = !el.checked;
+  };
 
   window.showWelcomeBanner = function () {
     var s = Session.get() || {};
