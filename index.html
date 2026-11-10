@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g1help">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g2">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -121,6 +121,10 @@
         <div class="form-group">
           <label for="signinContact">Contact <span style="font-weight:400;color:var(--text-muted);">(phone or email)</span></label>
           <input type="text" id="signinContact" placeholder="(555) 555-1234 or you@example.com" autocomplete="off">
+        </div>
+        <div class="checkbox-group" style="margin-bottom:16px;">
+          <input type="checkbox" id="signinHasResources">
+          <label for="signinHasResources">I brought equipment or a crew to log</label>
         </div>
         <button type="submit" class="btn btn-primary btn-block" id="signinBtn">
           Check In
@@ -250,14 +254,16 @@
       <!-- MANUAL WORKSPACE -->
       <div class="workspace-panel" id="ws-manual">
         <div class="form-group">
-          <label for="manualType">Resource Type</label>
-          <select id="manualType">
-            <option value="Vessel">Vessel</option>
-            <option value="Vehicle">Vehicle</option>
-            <option value="Equipment">Equipment</option>
-            <option value="Aircraft">Aircraft</option>
-            <option value="Other">Other</option>
-          </select>
+          <label>Resource Type</label>
+          <input type="hidden" id="manualType" value="">
+          <div class="chip-row type-chips" id="manualTypeChips">
+            <button type="button" class="chip" data-type="Vessel" onclick="setManualType('Vessel')">Vessel</button>
+            <button type="button" class="chip" data-type="Vehicle" onclick="setManualType('Vehicle')">Vehicle</button>
+            <button type="button" class="chip" data-type="Equipment" onclick="setManualType('Equipment')">Equipment</button>
+            <button type="button" class="chip" data-type="Aircraft" onclick="setManualType('Aircraft')">Aircraft</button>
+            <button type="button" class="chip" data-type="Personnel" onclick="setManualType('Personnel')">Crew</button>
+            <button type="button" class="chip" data-type="Other" onclick="setManualType('Other')">Other</button>
+          </div>
         </div>
         <div class="form-group">
           <label for="manualIdentifier">Identifier / Name</label>
@@ -278,6 +284,14 @@
             <option value="assigned">Assigned</option>
             <option value="out_of_service">Out of Service</option>
           </select>
+        </div>
+        <div class="form-group">
+          <label for="manualLocation">Where is it?</label>
+          <select id="manualLocation" onchange="onLocationSelect(this, 'manualLocationOther')">
+            <option value="">Select location...</option>
+            <option value="__custom__">Location not listed...</option>
+          </select>
+          <input type="text" id="manualLocationOther" class="hidden" placeholder="Enter location name" style="margin-top:8px;">
         </div>
         <div class="form-group">
           <label for="manualNotes">Notes</label>
@@ -486,7 +500,7 @@
               </div>
               <div class="form-group">
                 <label>Unit</label>
-                <select id="rrUom"><option>EA</option><option>FT</option><option>GAL</option><option>ROLLS</option><option>CASES</option><option>PALLETS</option></select>
+                <select id="rrUom"><option>EA</option><option>BALES</option><option>BAGS</option><option>BOXES</option><option>CASES</option><option>ROLLS</option><option>PALLETS</option><option>FT</option><option>GAL</option><option>DRUMS</option></select>
               </div>
               <div class="form-group">
                 <label>Priority</label>
@@ -494,8 +508,12 @@
               </div>
             </div>
             <div class="form-group">
-              <label>Deliver to</label>
-              <input type="text" id="rrDelivery" placeholder="Staging area / location">
+              <label for="rrDeliverySel">Deliver to</label>
+              <select id="rrDeliverySel" onchange="onLocationSelect(this, 'rrDelivery')">
+                <option value="">Select location...</option>
+                <option value="__custom__">Location not listed...</option>
+              </select>
+              <input type="text" id="rrDelivery" class="hidden" placeholder="Staging area / location" style="margin-top:8px;">
             </div>
             <div class="form-group">
               <label>Needed by</label>
@@ -509,6 +527,12 @@
             <button class="btn btn-primary btn-block" id="rrSubmitBtn" onclick="submitRrRequest()">Submit Request</button>
             <div style="font-size:11px;color:#8a8e8e;margin-top:6px;">Submitted under your check-in name. The Resource Unit reviews and orders through logistics.</div>
           </div>
+
+          <div class="section-header" id="rrMineHead" style="display:none;">
+            <h3>My Requests</h3>
+            <button class="btn btn-sm btn-secondary" id="rrMineRefresh" onclick="refreshMyRequests(true)">Refresh</button>
+          </div>
+          <div id="rrMineList"></div>
 
           <hr class="divider" style="margin: 24px 0;">
 
@@ -588,6 +612,14 @@
           <span class="stat-label">Resources Submitted</span>
           <span class="stat-value" id="tyResourceCount"></span>
         </div>
+        <div class="stat-row">
+          <span class="stat-label">Supply Requests</span>
+          <span class="stat-value" id="tyRequestCount"></span>
+        </div>
+        <div class="stat-row">
+          <span class="stat-label">214 Entries Not Sent</span>
+          <span class="stat-value" id="tyUnsent214"></span>
+        </div>
       </div>
 
       <button class="btn btn-secondary btn-block mt-16" onclick="restartApp()">
@@ -603,6 +635,7 @@
     <div class="overlay-card">
       <h2>Check Out?</h2>
       <p>This will end your session. Any unsubmitted resources will be lost.</p>
+      <div id="checkoutUnsent" class="checkout-unsent hidden"></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="hideCheckoutOverlay()">Cancel</button>
         <button class="btn btn-danger" onclick="confirmCheckOut()">Check Out</button>
@@ -644,7 +677,8 @@
       </div>
       <div class="help-sec">
         <div class="help-h">&#128230; Resources</div>
-        <p>Tell the incident what people and equipment you brought, and see what's already on scene.</p>
+        <p>Tell the incident what people and equipment you brought, ask for supplies (follow them under
+          <b>My Requests</b>), and see what's already on scene. New items show <b>Pending review</b> until WRI accepts them.</p>
       </div>
       <div class="help-sec">
         <div class="help-h">214 button &middot; Check Out</div>
@@ -686,22 +720,22 @@
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
   <!-- incident gate (P3): asks which incident when several are open; shared with the Field App -->
   <script src="/wri-field-app/incident-gate.js"></script>
-  <script src="js/config.js?v=2026-11-10-g1help"></script>
-  <script src="js/obstypes.js?v=2026-11-10-g1help"></script>
-  <script src="js/api.js?v=2026-11-10-g1help"></script>
-  <script src="js/session.js?v=2026-11-10-g1help"></script>
-  <script src="js/outbox.js?v=2026-11-10-g1help"></script>
-  <script src="js/screens.js?v=2026-11-10-g1help"></script>
-  <script src="js/arcgis-auth.js?v=2026-11-10-g1help"></script>
-  <script src="js/map.js?v=2026-11-10-g1help"></script>
-  <script src="js/maptools.js?v=2026-11-10-g1help"></script>
-  <script src="js/recon.js?v=2026-11-10-g1help"></script>
-  <script src="js/resources.js?v=2026-11-10-g1help"></script>
-  <script src="js/requests.js?v=2026-11-10-g1help"></script>
-  <script src="js/sitstat.js?v=2026-11-10-g1help"></script>
-  <script src="js/livestream.js?v=2026-11-10-g1help"></script>
-  <script src="js/ics214.js?v=2026-11-10-g1help"></script>
-  <script src="js/app.js?v=2026-11-10-g1help"></script>
+  <script src="js/config.js?v=2026-11-10-g2"></script>
+  <script src="js/obstypes.js?v=2026-11-10-g2"></script>
+  <script src="js/api.js?v=2026-11-10-g2"></script>
+  <script src="js/session.js?v=2026-11-10-g2"></script>
+  <script src="js/outbox.js?v=2026-11-10-g2"></script>
+  <script src="js/screens.js?v=2026-11-10-g2"></script>
+  <script src="js/arcgis-auth.js?v=2026-11-10-g2"></script>
+  <script src="js/map.js?v=2026-11-10-g2"></script>
+  <script src="js/maptools.js?v=2026-11-10-g2"></script>
+  <script src="js/recon.js?v=2026-11-10-g2"></script>
+  <script src="js/resources.js?v=2026-11-10-g2"></script>
+  <script src="js/requests.js?v=2026-11-10-g2"></script>
+  <script src="js/sitstat.js?v=2026-11-10-g2"></script>
+  <script src="js/livestream.js?v=2026-11-10-g2"></script>
+  <script src="js/ics214.js?v=2026-11-10-g2"></script>
+  <script src="js/app.js?v=2026-11-10-g2"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.
