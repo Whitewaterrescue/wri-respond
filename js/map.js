@@ -385,6 +385,54 @@
       .catch(function () { return null; });
   }
 
+  // The incident's site point from the registry (?api=openincidents lat/lon).
+  // The public gateway map is ONE shared web map whose saved extent is wherever
+  // it was last activated (2026-11-10 G1: it opened on Spokane for 2611open at
+  // Bonner), so the view has to be moved to the picked incident itself.
+  var incidentSitePromise = null;
+  function incidentSite() {
+    if (incidentSitePromise) return incidentSitePromise;
+    var inc = (window.APP && APP.incident) || {};
+    var want = String(inc.incident_id || '');
+    incidentSitePromise = (window.apiGet ? apiGet('openincidents') : Promise.reject(new Error('no api')))
+      .then(function (d) {
+        var hit = ((d && d.incidents) || []).filter(function (r) { return String(r.incident_id) === want; })[0];
+        if (!hit || hit.lat == null || hit.lon == null) return null;
+        return { lat: Number(hit.lat), lon: Number(hit.lon), name: hit.incident_name || '' };
+      })
+      .catch(function () { incidentSitePromise = null; return null; });
+    return incidentSitePromise;
+  }
+  var INCIDENT_ZOOM = 13;
+
+  function goToIncident(view, animate) {
+    return incidentSite().then(function (site) {
+      if (!site || !view) return false;
+      return view.goTo({ center: [site.lon, site.lat], zoom: INCIDENT_ZOOM }, { animate: !!animate })
+        .then(function () { return true; }, function () { return false; });
+    });
+  }
+  window.wriGoToIncident = function () { return goToIncident(mapView, true); };   // help sheet + test handle
+
+  function buildGoToIncident() {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'map-goto-incident';
+    btn.innerHTML = '&#127919; Incident';
+    btn.title = 'Go back to the incident';
+    btn.onclick = function () {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="btn-spin"></span> Incident';
+      goToIncident(mapView, true).then(function (ok) {
+        btn.disabled = false;
+        btn.innerHTML = '&#127919; Incident';
+        if (!ok && window.showToast) showToast('Could not find the incident location', true);
+      });
+    };
+    return btn;
+  }
+
   window.initMainMap = function () {
     var inc0 = (window.APP && APP.incident) || {};
     // Which stable map a staff sign-in would switch to. Resolved before the SDK
@@ -494,7 +542,16 @@
         }
         mapView = new MapView(viewProps);
 
+        // Start on the incident, not the web map's saved extent. Skipped if the
+        // person already dragged the map before the site point came back.
+        var userMoved = false;
+        mapView.on('drag', function () { userMoved = true; });
+        incidentSite();   // start the lookup alongside the SDK work
+
         mapView.when(function () {
+          incidentSite().then(function (site) {
+            if (site && !userMoved) goToIncident(mapView, false);
+          });
           mapView.ui.add(new Locate({ view: mapView }), 'top-right');
           gateOrthosOnPhone(map);
           mapView.ui.add(buildStaffSignIn(staffMap), 'bottom-left');
@@ -548,6 +605,7 @@
           layerToggle.appendChild(layerBtn);
           layerToggle.appendChild(layerPanel);
           mapView.ui.add(layerToggle, 'top-left');
+          mapView.ui.add(buildGoToIncident(), 'top-left');
 
           if (usingWebMap) scopeMapToIncident(map);
 
@@ -622,6 +680,9 @@
           window.reconMapReady = true; // signals tap-to-place is armed (tests key on this)
           // If GPS landed before the picker finished loading, draw it now.
           if (window.reconPoint) setReconGraphic(window.reconPoint.lat, window.reconPoint.lon);
+          // No GPS fix yet: frame the incident, not the web map's saved extent
+          // (a GPS fix that lands later still recentres on the reporter).
+          else goToIncident(reconMiniView, false);
           if (mapTapHandler) { mapTapHandler.remove(); }
           mapTapHandler = reconMiniView.on('click', function (event) {
             window.reconPoint = {

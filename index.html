@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-11-03-recon-p5">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g1help">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -189,7 +189,7 @@
       </button>
       <button class="mode-btn mode-btn-full" onclick="selectInputMode('wrrl')">
         <span class="mode-icon">&#9745;</span>
-        <span class="mode-label">Company Equipment List (WRRL)</span>
+        <span class="mode-label">Pick from my company&rsquo;s listed equipment</span>
       </button>
     </div>
 
@@ -341,6 +341,7 @@
       <img src="assets/wri-logo.png" alt="WRI" style="height:28px;" onerror="this.outerHTML='<span style=font-size:20px;font-weight:700;color:#EC2329>WRI</span>'">
       <span class="incident-name" id="headerIncident"></span>
       <span class="user-name" id="headerUser"></span>
+      <button class="help-btn" type="button" onclick="showHelp()" aria-label="How to use this app" title="How to use this app">?</button>
       <button class="checkout-btn" onclick="showCheckoutOverlay()">Check Out</button>
     </div>
     <div class="welcome-banner" id="welcomeBanner"></div>
@@ -609,25 +610,98 @@
     </div>
   </div>
 
+  <!-- ═══════════════════════════════════════════════════════
+       HELP SHEET (header "?"; opens by itself the first time a phone checks in)
+       ═══════════════════════════════════════════════════════ -->
+  <div id="helpOverlay" class="overlay" onclick="if (event.target === this) hideHelp()">
+    <div class="overlay-card help-card" role="dialog" aria-labelledby="helpTitle">
+      <h2 id="helpTitle">How to use this app</h2>
+      <p class="help-lead">You're checked in to <b id="helpIncident">this incident</b>. This app shows you the
+        incident and lets you report what you see. It does <b>not</b> replace your radio: for anything urgent or
+        life-safety, radio or call the Incident Commander or Safety Officer first.</p>
+
+      <div class="help-sec">
+        <div class="help-h">&#128506; Map</div>
+        <p>The incident map. Tap <b>&#127919; Incident</b> to jump back to the incident, <b>&#9776;</b> for the
+          layer list and legend, and any symbol for its details. The buttons at the bottom right are tools:
+          <b>Trajectory</b> (where floating oil will drift), <b>Gradient</b> (which way the ground runs downhill)
+          and a resource search.</p>
+      </div>
+      <div class="help-sec">
+        <div class="help-h">&#128250; Live</div>
+        <p>Live video from the incident drones, when one is flying.</p>
+      </div>
+      <div class="help-sec">
+        <div class="help-h">&#128205; Add to COP &mdash; report something</div>
+        <p>Oil, a hazard, an injury or near miss, wildlife, a road closure. Tap the small map <b>where it is</b>
+          (not where you're standing), pick the type, describe it and add a photo. It goes on the shared map for
+          everyone. Hazards are under <b>Safety</b>.</p>
+      </div>
+      <div class="help-sec">
+        <div class="help-h">&#128202; Sit Stat &mdash; get your bearings</div>
+        <p>Weather, who's in charge and their phone numbers, the radio plan (ICS 205), the safety plan (HASP),
+          the incident timeline and who's checked in. Check the date on each item: plans are written per shift.</p>
+      </div>
+      <div class="help-sec">
+        <div class="help-h">&#128230; Resources</div>
+        <p>Tell the incident what people and equipment you brought, and see what's already on scene.</p>
+      </div>
+      <div class="help-sec">
+        <div class="help-h">214 button &middot; Check Out</div>
+        <p>The round <b>214</b> button is your activity log: note what you did and when. Tap <b>Check Out</b>
+          when you leave the incident.</p>
+      </div>
+
+      <div class="help-sec">
+        <div class="help-h">Words you'll see</div>
+        <dl class="help-terms">
+          <dt>COP</dt><dd>Common operating picture: the shared incident map.</dd>
+          <dt>Sit Stat</dt><dd>Situation status: the current summary.</dd>
+          <dt>IC / OSC</dt><dd>Incident Commander / On-Scene Coordinator (the agency lead).</dd>
+          <dt>ICP</dt><dd>Incident command post: where command is set up.</dd>
+          <dt>Staging</dt><dd>Where arriving crews and equipment wait for an assignment.</dd>
+          <dt>HASP</dt><dd>Health &amp; safety plan. Read it before you start work.</dd>
+          <dt>ICS 201 / 205 / 214</dt><dd>Standard incident forms: incident briefing / radio plan / activity log.</dd>
+          <dt>Op period</dt><dd>One shift of the response (&ldquo;Op 1&rdquo; is the first).</dd>
+          <dt>TF / ST</dt><dd>Task force / strike team: a named crew with one leader.</dd>
+          <dt>Recon points</dt><dd>Field observations on the map (yours from Add to COP land here).</dd>
+          <dt>C / P</dt><dd>Current / Planned, on the Sit Stat timeline and task forces.</dd>
+          <dt>REQ-####</dt><dd>A resource request number.</dd>
+          <dt>GRP</dt><dd>Geographic response plan: pre-planned boom and protection sites.</dd>
+          <dt>Gradient</dt><dd>Which way the ground slopes, so which way a spill on land will run.</dd>
+          <dt>Nova</dt><dd>The live video viewer on the Live tab.</dd>
+          <dt>Resource Unit</dt><dd>The incident team that tracks equipment and fills supply requests.</dd>
+          <dt>Work chart</dt><dd>The incident org chart: who fills each position today.</dd>
+          <dt>Unit log / 214A</dt><dd>A team&rsquo;s shared activity log; 214 is your own.</dd>
+          <dt>WRRL</dt><dd>Western Response Resource List: the regional catalogue of spill companies&rsquo; equipment.</dd>
+        </dl>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" type="button" onclick="hideHelp()">Got it</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
   <!-- incident gate (P3): asks which incident when several are open; shared with the Field App -->
   <script src="/wri-field-app/incident-gate.js"></script>
-  <script src="js/config.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/obstypes.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/api.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/session.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/outbox.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/screens.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/arcgis-auth.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/map.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/maptools.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/recon.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/resources.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/requests.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/sitstat.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/livestream.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/ics214.js?v=2026-11-03-recon-p5"></script>
-  <script src="js/app.js?v=2026-11-03-recon-p5"></script>
+  <script src="js/config.js?v=2026-11-10-g1help"></script>
+  <script src="js/obstypes.js?v=2026-11-10-g1help"></script>
+  <script src="js/api.js?v=2026-11-10-g1help"></script>
+  <script src="js/session.js?v=2026-11-10-g1help"></script>
+  <script src="js/outbox.js?v=2026-11-10-g1help"></script>
+  <script src="js/screens.js?v=2026-11-10-g1help"></script>
+  <script src="js/arcgis-auth.js?v=2026-11-10-g1help"></script>
+  <script src="js/map.js?v=2026-11-10-g1help"></script>
+  <script src="js/maptools.js?v=2026-11-10-g1help"></script>
+  <script src="js/recon.js?v=2026-11-10-g1help"></script>
+  <script src="js/resources.js?v=2026-11-10-g1help"></script>
+  <script src="js/requests.js?v=2026-11-10-g1help"></script>
+  <script src="js/sitstat.js?v=2026-11-10-g1help"></script>
+  <script src="js/livestream.js?v=2026-11-10-g1help"></script>
+  <script src="js/ics214.js?v=2026-11-10-g1help"></script>
+  <script src="js/app.js?v=2026-11-10-g1help"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.

@@ -64,7 +64,7 @@
     csv: 'Upload File',
     manual: 'Fill Out Form',
     voice: 'Voice Entry',
-    wrrl: 'Company Equipment List'
+    wrrl: 'My company2019s listed equipment'
   };
 
   function setModeFull(on, title) {
