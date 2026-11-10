@@ -135,6 +135,7 @@
   window.showStagingOnMap = function () {
     if (!staging) return;
     hideFirstStop();
+    if (window.flyToPlace) return flyToPlace(staging.lon, staging.lat, staging.name);   // marker + label, like Key places
     switchTab('map');
     var go = function () { if (window.wriMapView) wriMapView.goTo({ center: [staging.lon, staging.lat], zoom: 16 }).catch(function () {}); };
     if (window.wriMapView && wriMapView.ready) go(); else setTimeout(go, 2500);
