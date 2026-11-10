@@ -413,6 +413,7 @@
     });
   }
   window.wriGoToIncident = function () { return goToIncident(mapView, true); };   // help sheet + test handle
+  window.wriIncidentSite = incidentSite;   // key places measure from it
 
   // G3 2026-11-10 (Cody: filter by location): the gateway map's "Response Plans" group holds
   // every river's plan; an incident's viewers see only the plan points within PLAN_RADIUS_MI of
@@ -651,6 +652,8 @@
           layerToggle.appendChild(layerPanel);
           mapView.ui.add(layerToggle, 'top-left');
           mapView.ui.add(buildGoToIncident(), 'top-left');
+          // Key places (same list as the Field App's): command post, staging, ramps, decon, LZs, aid, hospitals
+          if (window.initKeyPlaces) mapView.ui.add(initKeyPlaces(mapView, { Graphic: Graphic }), 'top-left');
 
           if (usingWebMap) scopeMapToIncident(map);
           if (usingWebMap) scopeResponsePlans(map, mapView);

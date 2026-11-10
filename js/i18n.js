@@ -70,6 +70,15 @@
       'lv.live': '{n} drone(s) streaming now.', 'lv.unknown': "Couldn't check for drone video. You can still try.",
       'lv.other': 'Other video feed (Nova)',
       'sf.everyone': 'Everyone', 'sf.water': 'On or near the water', 'sf.task': 'If your task needs it (ask your boss)',
+      'kp.button': 'Key places', 'kp.title': 'Key places', 'kp.incident': 'Incident location',
+      'kp.straight': 'Distances are straight-line from the incident location, not driving distance.',
+      'kp.finding': 'Finding places near the incident…', 'kp.atIncident': 'at the incident', 'kp.byRoad': 'by road',
+      'kp.failed': "Couldn't reach the incident's places (slow signal?). Close and tap Key places again.",
+      'kp.noStaging': 'No staging area mapped for this incident yet: ask your supervisor.',
+      'kp.icp': 'Command post', 'kp.staging': 'Staging', 'kp.ramp': 'Boat ramps', 'kp.decon': 'Decon',
+      'kp.lz': 'Landing zones', 'kp.aid': 'Aid stations', 'kp.hospital': 'Hospitals',
+      'kp.t.icp': 'Incident Command Post', 'kp.t.staging': 'Staging area', 'kp.t.planned': 'Planned staging area',
+      'kp.t.ramp': 'Boat ramp', 'kp.t.decon': 'Decon', 'kp.t.lz': 'Landing zone', 'kp.t.aid': 'Aid station', 'kp.t.hospital': 'Hospital',
       'ty.reqs': 'Your supply requests: {ids}. To follow them, call the WRI 24-hour line {line}.'
     },
     es: {
@@ -125,6 +134,15 @@
       'lv.live': '{n} dron(es) transmitiendo ahora.', 'lv.unknown': 'No pudimos revisar si hay video. Puede intentarlo igual.',
       'lv.other': 'Otra transmisión (Nova)',
       'sf.everyone': 'Todos', 'sf.water': 'En el agua o cerca del agua', 'sf.task': 'Si su tarea lo necesita (pregunte a su jefe)',
+      'kp.button': 'Lugares clave', 'kp.title': 'Lugares clave', 'kp.incident': 'Lugar del incidente',
+      'kp.straight': 'Las distancias son en línea recta desde el incidente, no por carretera.',
+      'kp.finding': 'Buscando lugares cerca del incidente…', 'kp.atIncident': 'en el incidente', 'kp.byRoad': 'por carretera',
+      'kp.failed': 'No pudimos cargar los lugares (¿poca señal?). Cierre y toque Lugares clave otra vez.',
+      'kp.noStaging': 'Todavía no hay un área de espera en el mapa: pregunte a su supervisor.',
+      'kp.icp': 'Puesto de mando', 'kp.staging': 'Área de espera', 'kp.ramp': 'Rampas para botes', 'kp.decon': 'Descontaminación',
+      'kp.lz': 'Zonas de aterrizaje', 'kp.aid': 'Puestos de primeros auxilios', 'kp.hospital': 'Hospitales',
+      'kp.t.icp': 'Puesto de mando del incidente', 'kp.t.staging': 'Área de espera', 'kp.t.planned': 'Área de espera planeada',
+      'kp.t.ramp': 'Rampa para botes', 'kp.t.decon': 'Descontaminación', 'kp.t.lz': 'Zona de aterrizaje', 'kp.t.aid': 'Primeros auxilios', 'kp.t.hospital': 'Hospital',
       'ty.reqs': 'Sus pedidos: {ids}. Para seguirlos, llame a la línea de WRI de 24 horas {line}.'
     }
   };
