@@ -64,7 +64,7 @@
       var t = document.createElement('button');
       t.type = 'button';
       t.className = 'cat-tab' + (cat === selectedCategory ? ' active' : '');
-      t.textContent = cat;
+      t.textContent = window.t ? window.t('cat.' + cat) : cat;
       t.onclick = function () {
         selectedCategory = cat;
         renderCatTabs();
@@ -83,7 +83,7 @@
         card.type = 'button';
         card.className = 'obs-card' + (selectedType === t.code ? ' selected' : '');
         card.innerHTML = '<img src="assets/obs/' + t.icon + '.png" alt="" loading="lazy">' +
-          '<span>' + esc(t.label) + '</span>';
+          '<span>' + esc(window.tType ? tType(t.code, t.label) : t.label) + '</span>';
         card.onclick = function () { selectType(t); };
         grid.appendChild(card);
       });
@@ -95,6 +95,16 @@
     selectedSubtype = null;
     renderTypeCards();
   }
+  // Get help -> "someone hurt" / "stop work": straight to that report, GPS already asked for
+  window.presetReportType = function (code) {
+    if (window.initReconTypePicker) initReconTypePicker();
+    for (var i = 0; i < self.OBS_TYPES.length; i++) {
+      if (self.OBS_TYPES[i].code === code) { selectedCategory = self.OBS_TYPES[i].category; selectType(self.OBS_TYPES[i]); renderCatTabs(); break; }
+    }
+    var n = document.getElementById('reconNotes');
+    if (n) setTimeout(function () { n.focus(); }, 300);
+  };
+  window.addEventListener('wri-lang', function () { if (document.getElementById('reconCatTabs').children.length) { renderCatTabs(); renderTypeCards(); } });
 
   function currentTypeObj() {
     for (var i = 0; i < self.OBS_TYPES.length; i++) {
@@ -174,17 +184,17 @@
     e.preventDefault();
 
     if (!window.reconPoint) {
-      showToast('No location set. Tap the map to place the point, or use "Use My Location".', true);
+      showToast(window.t ? t('rc.noPlace') : 'No location set.', true);
       return;
     }
     if (!selectedType) {
-      showToast('Select an observation type.', true);
+      showToast(window.t ? t('rc.pickType') : 'Select an observation type.', true);
       return;
     }
 
     var btn = document.getElementById('reconSubmitBtn');
     btn.disabled = true;
-    btn.innerHTML = '<span class="spinner spinner-sm"></span> Submitting...';
+    btn.innerHTML = '<span class="spinner spinner-sm"></span> ' + (window.t ? t('rc.sending') : 'Sending…');
 
     // Null-guarded: the TF fields shipped after this module — survive HTTP-cache
     // version skew where old HTML pairs with this JS (or vice versa).
@@ -207,8 +217,10 @@
     apiPost('recon-submit', payload)
       .then(function (result) {
         btn.disabled = false;
-        btn.textContent = 'Add to COP';
+        btn.textContent = window.t ? t('rc.send') : 'Send report';
         if (result && result.success) {
+          if (window.APP) APP.reportCount = (APP.reportCount || 0) + 1;
+          document.getElementById('reconAlertResult').innerHTML = alertResultHtml(result.alert, payload.observation_type, payload.recon_id);
           document.getElementById('reconForm').classList.add('hidden');
           document.getElementById('reconSuccess').classList.remove('hidden');
         } else {
@@ -217,7 +229,7 @@
       })
       .catch(function (err) {
         btn.disabled = false;
-        btn.textContent = 'Add to COP';
+        btn.textContent = window.t ? t('rc.send') : 'Send report';
         if (handleAuthError(err)) return;
         if (err && err.transient) {
           // Observations are NOT queued offline in this pilot — the entry
@@ -228,6 +240,29 @@
         showToast('Submit error: ' + friendlyError(err), true);
       });
   });
+
+  /* G4 2026-11-10: a safety report says who was told and who to call ("help is coming") */
+  function alertResultHtml(a, type, reconId) {
+    if (!/^(injury|stop_work|near_miss)$/.test(type || '')) return '';
+    var tt = window.t || function (k) { return k; };
+    var ref = String(reconId || '').slice(0, 8).toUpperCase();
+    var s = window.safetyOfficer ? safetyOfficer() : null;
+    var call = s && s.phone ? '<a class="btn btn-primary btn-block call-btn" href="tel:' + escAttr(String(s.phone).replace(/[^\d+]/g, '')) + '">&#128222; ' +
+      esc(tt('al.callNow', { name: s.name })) + '<span class="call-num">' + esc(s.phone) + '</span></a>' : '';
+    var h = '<div class="alert-result">';
+    if (type === 'near_miss') {
+      h += '<p>' + esc(tt('al.logged')) + '</p>';
+    } else if (a && a.sent_to && a.sent_to.length) {
+      h += '<p class="al-big">' + esc(tt('al.coming')) + '</p><p>' + esc(tt('al.told', { who: a.sent_to.map(function (x) {
+        return x.name + (x.position ? ' (' + x.position + ')' : ''); }).join(', ') })) + '</p>';
+    } else {
+      h += '<p class="al-big al-warn">' + esc(tt('al.none')) + '</p>';
+    }
+    h += call + '<a class="btn btn-danger btn-block call-btn" href="tel:911">&#128222; ' + esc(tt('gh.911')) + '</a>';
+    if (type !== 'near_miss') h += '<p class="al-small">' + esc(tt('al.radio')) + '</p>';
+    if (ref) h += '<p class="al-small">' + esc(tt('al.ref', { ref: ref })) + '</p>';
+    return h + '</div>';
+  }
 
   /* ═══════════════════════════════════════════
      RESET

@@ -63,6 +63,8 @@
     tfld: 'Task Force Leader', strl: 'Strike Team Leader'
   };
 
+  window.positionLabel = function (k) { return ICS_POSITION_LABELS[k] || String(k || '').replace(/_/g, ' '); };
+
   var ICS_SECTIONS = {
     command: ['ic', 'deputy_ic', 'sofr', 'pio', 'lofr', 'fosc', 'sosc', 'losc'],
     operations: ['osc', 'deputy_osc', 'stam', 'divs', 'grps', 'tfld', 'strl'],
@@ -76,6 +78,17 @@
   window.loadSitStat = function () {
     var contentEl = document.getElementById('sitstatContent');
     var refreshEl = document.getElementById('sitstatLastRefresh');
+    // G4 2026-11-10: show the last copy at once while the fresh one loads (it took ~55 s)
+    if (!contentEl.querySelector('.status-box')) {
+      var snap0 = null;
+      try { snap0 = JSON.parse(localStorage.getItem(SITSTAT_SNAP_KEY)); } catch (e) {}
+      var inc0 = String(((window.APP && APP.incident) || {}).incident_id || '');
+      if (snap0 && snap0.data && (!snap0.incident_id || snap0.incident_id === inc0)) {
+        window.__sitstat = snap0.data;
+        renderSitStat(snap0.data, contentEl);
+        refreshEl.innerHTML = '<span class="spinner spinner-sm"></span> ' + esc(window.t ? t('st.updating') : 'Updating…');
+      }
+    }
 
     apiGet('sitstat')
       .then(function (data) {
@@ -87,14 +100,17 @@
         // can overflow on huge attachment lists — snapshot is best-effort.
         try {
           localStorage.setItem(SITSTAT_SNAP_KEY, JSON.stringify({
-            data: data, fetched_at: new Date().toISOString()
+            data: data, fetched_at: new Date().toISOString(),
+            incident_id: String(((window.APP && APP.incident) || {}).incident_id || '')
           }));
         } catch (e) {}
+        window.__sitstat = data;
         renderSitStat(data, contentEl);
+        if (window.ensureSafetyData) ensureSafetyData(function () { if (window.__sitstat) renderSitStat(window.__sitstat, contentEl); });
         // G3 2026-11-10: say how old the INFORMATION is, not when the page loaded
         var newest = newestInfo(data);
-        refreshEl.innerHTML = 'Checked ' + esc(formatTime(new Date().toISOString())) +
-          (isFinite(newest) ? ' &middot; newest info ' + esc(ago(newest)) : '');
+        refreshEl.innerHTML = esc(window.t('ss.checked', { time: formatTime(new Date().toISOString()) })) +
+          (isFinite(newest) ? ' &middot; ' + esc(window.t('ss.newest', { ago: ago(newest) })) : '');
         refreshEl.classList.toggle('stale-text', isFinite(newest) && Date.now() - newest > STALE_MS);
       })
       .catch(function (err) {
@@ -130,6 +146,8 @@
       'EXERCISE / DRILL - THIS IS NOT A REAL INCIDENT</div>' : '';
     try {
 
+      if (window.firstStopHtml) html += firstStopHtml(data);
+      if (window.safetyTodayHtml) html += safetyTodayHtml(data);
       html += statusBox(data);
 
       // ---------- Pending Count Banner ----------
@@ -297,7 +315,7 @@
             var raw = assignments[posKey];
             if (!raw) return;
             rendered[posKey] = true;
-            var names = peopleNames(raw);
+            var names = peopleNames(raw, data.contacts);
             if (!names) return;
             var label = ICS_POSITION_LABELS[posKey] || posKey.toUpperCase();
             rows.push('<tr><td>' + esc(label) + '</td><td>' + names + '</td></tr>');
@@ -317,7 +335,7 @@
           if (activePositions.indexOf(posKey) === -1) return;
           var raw = assignments[posKey];
           if (!raw) return;
-          var names = peopleNames(raw);
+          var names = peopleNames(raw, data.contacts);
           if (!names) return;
           var label = ICS_POSITION_LABELS[posKey] ||
             posKey.replace(/_/g, ' ').replace(/\b\w/g, function (c) { return c.toUpperCase(); });
@@ -540,28 +558,34 @@
     var openReq = (d.openRequests || []).length;
     var sm = d.safetyMessage && !d.safetyMessage.error ? d.safetyMessage : null;
     var h = '<div class="sitstat-card status-box' + (old ? ' status-old' : '') + '">';
-    h += '<div class="card-title">Current status</div>';
+    h += '<div class="card-title">' + esc(window.t('st.title')) + '</div>';
     if (isFinite(newest)) h += '<div class="status-age' + (old ? ' asof-old' : '') + '">' + (old ? '&#9888; ' : '') +
-      'Newest information: ' + esc(fmtDay(newest)) + ' (' + esc(ago(newest)) + ')' +
-      (old ? '. Nothing newer has been posted; call the incident team for today\'s status.' : '') + '</div>';
-    if (latest) h += '<div class="status-row"><b>Latest:</b> ' + esc(latest.action || '') +
+      esc(window.t('st.newest')) + ' ' + esc(fmtDay(newest)) + ' (' + esc(ago(newest)) + ')' +
+      (old ? '. ' + esc(window.t('st.oldTail')) : '') + '</div>';
+    if (latest) h += '<div class="status-row"><b>' + esc(window.t('st.latest')) + '</b> ' + esc(latest.action || '') +
       (latest.datetime ? ' <span class="muted">(' + esc(fmtDay(latest.datetime)) + ')</span>' : '') + '</div>';
-    h += '<div class="status-row"><b>People:</b> ' + (onScene != null ? esc(String(onScene)) + ' checked in' : 'check-ins not available') +
-      (staff ? ' &middot; ' + esc(String(staff)) + ' on the work chart' : '') + '</div>';
-    if (equip) h += '<div class="status-row"><b>Equipment:</b> ' + esc(equip) + '</div>';
-    h += '<div class="status-row"><b>Open requests:</b> ' + esc(String(openReq)) + '</div>';
+    h += '<div class="status-row"><b>' + esc(window.t('st.people')) + '</b> ' + (onScene != null ? esc(window.t('st.checkedIn', { n: onScene })) : esc(window.t('st.noCheckins'))) +
+      (staff ? ' &middot; ' + esc(window.t('st.onChart', { n: staff })) : '') + '</div>';
+    if (equip) h += '<div class="status-row"><b>' + esc(window.t('st.equip')) + '</b> ' + esc(equip) + '</div>';
+    h += '<div class="status-row"><b>' + esc(window.t('st.req')) + '</b> ' + esc(String(openReq)) + '</div>';
     if (sm && (sm.message || (sm.hazards || []).length)) {
-      h += '<div class="status-row"><b>Safety:</b> ' + esc(String(sm.message || '').split('\n')[0].slice(0, 160)) +
+      h += '<div class="status-row"><b>' + esc(window.t('st.safety')) + '</b> ' + esc(String(sm.message || '').split('\n')[0].slice(0, 160)) +
         ((sm.hazards || []).length ? ' <span class="muted">(' + sm.hazards.length + ' hazards listed)</span>' : '') + '</div>';
     }
     return h + '</div>';
   }
 
+  window.addEventListener('wri-lang', function () {
+    var el = document.getElementById('sitstatContent');
+    if (window.__sitstat && el && el.querySelector('.status-box')) renderSitStat(window.__sitstat, el);
+  });
+
   function orgSectionHeader(label) {
     return '<div style="margin-bottom:8px; font-size:0.78rem; font-weight:600; text-transform:uppercase; color:var(--text-muted); padding-top:6px;">' + esc(label) + '</div>';
   }
 
-  function peopleNames(raw) {
+  function peopleNames(raw, contacts) {
+    var phones = (contacts && contacts.phones) || {};
     var people = [];
     try {
       people = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []);
@@ -572,6 +596,8 @@
     return people.map(function (p) {
       var display = esc(p.name || '');
       if (p.org) display += ' (' + esc(p.org) + ')';
+      var ph = phones[String(p.name || '').trim().toLowerCase().replace(/\s+/g, ' ')];
+      if (ph) display += ' ' + phoneCell(ph);   // G4: call buttons on the org chart
       return display;
     }).join(', ');
   }
