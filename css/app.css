@@ -417,6 +417,21 @@
     .help-terms dd { margin: 0; color: var(--text-muted); line-height: 1.4; }
     .help-card .btn-row { margin-top: 16px; }
 
+    /* G3 2026-11-10: section ages, current-status box, work assignment cards, observer mode */
+    .sitstat-section-header { flex-wrap: wrap; gap: 4px 10px; }
+    .asof { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+    .asof-old { color: var(--warning); font-weight: 600; }
+    .stale-text { color: var(--warning); }
+    .status-box { border-left: 4px solid var(--info); margin-bottom: 16px; }
+    .status-box.status-old { border-left-color: var(--warning); }
+    .status-box .status-age { font-size: 0.8rem; margin: 2px 0 8px; color: var(--text-muted); }
+    .status-box .status-row { font-size: 0.85rem; line-height: 1.45; margin: 3px 0; color: var(--text); }
+    .status-box .muted { color: var(--text-muted); }
+    .wa-card .card-title { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+    .wa-card .wa-meta { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 4px; }
+    body.observer #tabBtn-recon, body.observer .wri-214-fab, body.observer #rrFormToggle,
+    body.observer #rrForm, body.observer button[onclick="openResourceUpload()"] { display: none !important; }
+
     /* G2 2026-11-10: review-card duplicate flag, Fill Out Form type buttons, check-out warning */
     .card-dup {
       background: rgba(243, 156, 18, 0.15); border: 1px solid var(--warning); color: var(--warning);

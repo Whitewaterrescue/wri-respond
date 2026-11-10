@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g2">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g3">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -106,7 +106,11 @@
       </div>
 
       <form id="signinForm" autocomplete="off">
-        <div class="checkbox-group" style="background:rgba(236,35,41,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
+        <div class="checkbox-group" style="margin-bottom:12px;">
+          <input type="checkbox" id="signinObserver" onchange="onObserverToggle(this)">
+          <label for="signinObserver">I'm observing remotely (client / agency, not on scene)</label>
+        </div>
+        <div class="checkbox-group" id="signinSafetyGroup" style="background:rgba(236,35,41,0.15);padding:12px;border-radius:8px;border:1px solid var(--accent);margin-bottom:16px;">
           <input type="checkbox" id="signinSafetyBriefing" required>
           <label for="signinSafetyBriefing" style="font-weight:600;">I have received or will receive a safety briefing before beginning work</label>
         </div>
@@ -122,7 +126,7 @@
           <label for="signinContact">Contact <span style="font-weight:400;color:var(--text-muted);">(phone or email)</span></label>
           <input type="text" id="signinContact" placeholder="(555) 555-1234 or you@example.com" autocomplete="off">
         </div>
-        <div class="checkbox-group" style="margin-bottom:16px;">
+        <div class="checkbox-group" id="signinHasResourcesGroup" style="margin-bottom:16px;">
           <input type="checkbox" id="signinHasResources">
           <label for="signinHasResources">I brought equipment or a crew to log</label>
         </div>
@@ -695,7 +699,7 @@
           <dt>ICP</dt><dd>Incident command post: where command is set up.</dd>
           <dt>Staging</dt><dd>Where arriving crews and equipment wait for an assignment.</dd>
           <dt>HASP</dt><dd>Health &amp; safety plan. Read it before you start work.</dd>
-          <dt>ICS 201 / 205 / 214</dt><dd>Standard incident forms: incident briefing / radio plan / activity log.</dd>
+          <dt>ICS 201 / 205 / 214</dt><dd>Standard incident forms: incident briefing / radio plan / activity logs.</dd>
           <dt>Op period</dt><dd>One shift of the response (&ldquo;Op 1&rdquo; is the first).</dd>
           <dt>TF / ST</dt><dd>Task force / strike team: a named crew with one leader.</dd>
           <dt>Recon points</dt><dd>Field observations on the map (yours from Add to COP land here).</dd>
@@ -706,7 +710,7 @@
           <dt>Nova</dt><dd>The live video viewer on the Live tab.</dd>
           <dt>Resource Unit</dt><dd>The incident team that tracks equipment and fills supply requests.</dd>
           <dt>Work chart</dt><dd>The incident org chart: who fills each position today.</dd>
-          <dt>Unit log / 214A</dt><dd>A team&rsquo;s shared activity log; 214 is your own.</dd>
+          <dt>214A / 214</dt><dd>Your own activity log is the 214A; a team&rsquo;s shared unit log is the 214.</dd>
           <dt>WRRL</dt><dd>Western Response Resource List: the regional catalogue of spill companies&rsquo; equipment.</dd>
         </dl>
       </div>
@@ -718,24 +722,24 @@
   </div>
 
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
-  <!-- incident gate (P3): asks which incident when several are open; shared with the Field App -->
-  <script src="/wri-field-app/incident-gate.js"></script>
-  <script src="js/config.js?v=2026-11-10-g2"></script>
-  <script src="js/obstypes.js?v=2026-11-10-g2"></script>
-  <script src="js/api.js?v=2026-11-10-g2"></script>
-  <script src="js/session.js?v=2026-11-10-g2"></script>
-  <script src="js/outbox.js?v=2026-11-10-g2"></script>
-  <script src="js/screens.js?v=2026-11-10-g2"></script>
-  <script src="js/arcgis-auth.js?v=2026-11-10-g2"></script>
-  <script src="js/map.js?v=2026-11-10-g2"></script>
-  <script src="js/maptools.js?v=2026-11-10-g2"></script>
-  <script src="js/recon.js?v=2026-11-10-g2"></script>
-  <script src="js/resources.js?v=2026-11-10-g2"></script>
-  <script src="js/requests.js?v=2026-11-10-g2"></script>
-  <script src="js/sitstat.js?v=2026-11-10-g2"></script>
-  <script src="js/livestream.js?v=2026-11-10-g2"></script>
-  <script src="js/ics214.js?v=2026-11-10-g2"></script>
-  <script src="js/app.js?v=2026-11-10-g2"></script>
+  <!-- No incident picker on the Gateway (G3 2026-11-10: it listed other clients' incidents).
+       The QR link (?incident=) or the access code picks the incident. -->
+  <script src="js/config.js?v=2026-11-10-g3"></script>
+  <script src="js/obstypes.js?v=2026-11-10-g3"></script>
+  <script src="js/api.js?v=2026-11-10-g3"></script>
+  <script src="js/session.js?v=2026-11-10-g3"></script>
+  <script src="js/outbox.js?v=2026-11-10-g3"></script>
+  <script src="js/screens.js?v=2026-11-10-g3"></script>
+  <script src="js/arcgis-auth.js?v=2026-11-10-g3"></script>
+  <script src="js/map.js?v=2026-11-10-g3"></script>
+  <script src="js/maptools.js?v=2026-11-10-g3"></script>
+  <script src="js/recon.js?v=2026-11-10-g3"></script>
+  <script src="js/resources.js?v=2026-11-10-g3"></script>
+  <script src="js/requests.js?v=2026-11-10-g3"></script>
+  <script src="js/sitstat.js?v=2026-11-10-g3"></script>
+  <script src="js/livestream.js?v=2026-11-10-g3"></script>
+  <script src="js/ics214.js?v=2026-11-10-g3"></script>
+  <script src="js/app.js?v=2026-11-10-g3"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.

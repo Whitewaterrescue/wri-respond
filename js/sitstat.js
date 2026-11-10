@@ -91,7 +91,11 @@
           }));
         } catch (e) {}
         renderSitStat(data, contentEl);
-        refreshEl.textContent = 'Updated ' + formatTime(new Date().toISOString());
+        // G3 2026-11-10: say how old the INFORMATION is, not when the page loaded
+        var newest = newestInfo(data);
+        refreshEl.innerHTML = 'Checked ' + esc(formatTime(new Date().toISOString())) +
+          (isFinite(newest) ? ' &middot; newest info ' + esc(ago(newest)) : '');
+        refreshEl.classList.toggle('stale-text', isFinite(newest) && Date.now() - newest > STALE_MS);
       })
       .catch(function (err) {
         // Offline / unreachable: render the stale snapshot with an explicit
@@ -126,6 +130,8 @@
       'EXERCISE / DRILL - THIS IS NOT A REAL INCIDENT</div>' : '';
     try {
 
+      html += statusBox(data);
+
       // ---------- Pending Count Banner ----------
       if (data.pendingCount && data.pendingCount > 0) {
         html += '<div class="sitstat-card" style="border-left:4px solid var(--warning); margin-bottom:16px;">';
@@ -158,7 +164,7 @@
       // ---------- ICS 201 ----------
       if (data.ics201 && data.ics201.incident_name) {
         html += '<div class="sitstat-section">';
-        html += '<div class="sitstat-section-header"><h3>ICS 201 - Incident Summary</h3></div>';
+        html += '<div class="sitstat-section-header"><h3>ICS 201 - Incident Summary</h3>' + asOf(data.ics201.datetime) + '</div>';
         html += '<div class="sitstat-card">';
         html += '<div class="card-title">' + esc(data.ics201.incident_name) + '</div>';
         html += '<div class="card-body" style="font-size:0.78rem; margin-bottom:8px;">';
@@ -197,7 +203,7 @@
       var cp = data.comms205;
       if (cp && !cp.error && ((cp.channels || []).length || cp.specialInstructions)) {
         html += '<div class="sitstat-section">';
-        html += '<div class="sitstat-section-header"><h3>ICS 205 - Communications Plan</h3></div>';
+        html += '<div class="sitstat-section-header"><h3>ICS 205 - Communications Plan</h3>' + asOfShift(cp.opFrom, cp.opTo) + '</div>';
         html += '<div class="card-body" style="font-size:0.78rem; margin-bottom:8px;">' + esc(cp.status || 'Draft');
         if (cp.opFrom || cp.opTo) html += ' &mdash; Op period ' + esc(cp.opFrom || '') + (cp.opTo ? ' to ' + esc(cp.opTo) : '');
         if (cp.preparedBy) html += ' &mdash; Prepared by ' + esc(cp.preparedBy);
@@ -247,7 +253,7 @@
       var plannedActions = (data.actions && data.actions.planned) || [];
       if (currentActions.length || plannedActions.length) {
         html += '<div class="sitstat-section">';
-        html += '<div class="sitstat-section-header"><h3>Actions</h3></div>';
+        html += '<div class="sitstat-section-header"><h3>Actions</h3>' + asOf(newestOf(currentActions.concat(plannedActions).map(function (a) { return a.datetime; }))) + '</div>';
         html += '<table class="sitstat-table"><thead><tr>' +
           '<th style="white-space:nowrap;width:1%;">Type</th>' +
           '<th style="white-space:nowrap;">Time</th>' +
@@ -345,7 +351,7 @@
               statusLower === 'assigned' || statusLower === 'deployed' ? 'status-assigned' : 'status-oos';
             html += '<div class="t-card ' + statusClass + '">';
             html += '<div class="t-header">';
-            html += '<span class="t-name">' + esc(tc.identifier || 'Unknown') + '</span>';
+            html += '<span class="t-name">' + esc(maskSerials(tc.identifier || 'Unknown')) + '</span>';
             html += '<span class="badge badge-' + getTypeBadgeClass(tc.type) + '">' + esc(tc.type || 'other') + '</span>';
             html += '</div>';
             if (tc.capability) html += '<div class="t-type">' + esc(tc.capability) + '</div>';
@@ -356,22 +362,24 @@
         html += '</div>';
       }
 
-      // ---------- Assignments ----------
+      // ---------- Work assignments (G3 2026-11-10: cards, not a table that scrolls sideways) ----------
       if (data.assignments && data.assignments.length) {
         html += '<div class="sitstat-section">';
-        html += '<div class="sitstat-section-header"><h3>Assignments</h3></div>';
-        html += '<table class="sitstat-table"><thead><tr>' +
-          '<th style="white-space:nowrap;">Location</th>' +
-          '<th style="white-space:nowrap;">Group</th>' +
-          '<th style="white-space:nowrap;">Tactic</th></tr></thead><tbody>';
+        html += '<div class="sitstat-section-header"><h3>Work Assignments (Operations)</h3>' +
+          asOf(data.assignments.map(function (a) { return String(a.date || ''); }).sort().pop() || '') + '</div>';
         data.assignments.forEach(function (a) {
-          html += '<tr>';
-          html += '<td>' + esc(a.location || '') + '</td>';
-          html += '<td>' + esc(a.group || '') + '</td>';
-          html += '<td>' + esc(a.tactics || '') + '</td>';
-          html += '</tr>';
+          var lines = String(a.tactics || '').split('\n');
+          var head = lines.shift() || a.location || 'Assignment';
+          var when = [a.date ? fmtDay(a.date) : '', [a.start, a.finish].filter(Boolean).join('\u2013')].filter(Boolean).join(' ');
+          html += '<div class="sitstat-card wa-card">';
+          html += '<div class="card-title">' + esc(maskSerials(head)) + statusBadge(a.status) + '</div>';
+          html += '<div class="card-body wa-meta">' + [a.location, [a.branch, a.group].filter(Boolean).join(' / '), when]
+            .filter(Boolean).map(esc).join(' &middot; ') + '</div>';
+          var rest = lines.join('\n').trim();
+          if (rest) html += '<div class="card-body" style="white-space:pre-wrap;">' + esc(maskSerials(rest)) + '</div>';
+          html += '</div>';
         });
-        html += '</tbody></table></div>';
+        html += '</div>';
       }
 
       // ---------- Open Requests ----------
@@ -395,14 +403,14 @@
       // ---------- HASP (Google Docs preview iframe) ----------
       if (data.hasp && !data.hasp.error) {
         html += '<div class="sitstat-section">';
-        html += '<div class="sitstat-section-header"><h3>HASP</h3></div>';
+        html += '<div class="sitstat-section-header"><h3>HASP</h3>' + asOf(data.hasp.timestamp) + '</div>';
         html += '<div class="sitstat-card">';
         if (data.hasp.projectName) html += '<div class="card-title">' + esc(data.hasp.projectName) + '</div>';
         html += '<div class="card-body" style="font-size:0.78rem; margin-bottom:8px;">';
         if (data.hasp.client) html += 'Client: ' + esc(data.hasp.client) + '<br>';
         if (data.hasp.location) html += 'Location: ' + esc(data.hasp.location) + '<br>';
         if (data.hasp.creator) html += 'Created by: ' + esc(data.hasp.creator) + '<br>';
-        if (data.hasp.timestamp) html += 'Timestamp: ' + esc(data.hasp.timestamp);
+        if (data.hasp.timestamp) html += 'Written: ' + esc(isFinite(parseWhen(data.hasp.timestamp)) ? fmtDay(data.hasp.timestamp) : data.hasp.timestamp);
         html += '</div>';
         if (data.hasp.docUrl) {
           var previewUrl = data.hasp.docUrl.replace(/\/edit.*$/, '/preview');
@@ -457,6 +465,96 @@
       html = '<div style="color:#e94560;padding:20px;">Sit Stat render error: ' + esc(e.message) + '</div>';
     }
     container.innerHTML = html;
+  }
+
+  /* ---------- G3 2026-11-10: how old each section is, and a current-status box ---------- */
+  var STALE_MS = 12 * 3600 * 1000;   // one shift
+  function ago(ms) {
+    var m = Math.round((Date.now() - ms) / 60000);
+    if (m < 60) return m <= 1 ? 'just now' : m + ' min ago';
+    var h = Math.round(m / 60); if (h < 36) return h + ' h ago';
+    return Math.round(h / 24) + ' days ago';
+  }
+  function fmtDay(v) {
+    var t = parseWhen(v); if (!isFinite(t)) return String(v || '');
+    var dateOnly = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
+    return new Date(t).toLocaleString([], dateOnly ? { month: 'short', day: 'numeric' }
+      : { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function newestOf(list) {
+    var best = NaN;
+    (list || []).forEach(function (v) { var t = parseWhen(v); if (isFinite(t) && t <= Date.now() + 36e5 && !(t <= best)) best = t; });
+    return best;
+  }
+  /** "as of" chip for a section; amber "older than this shift" past STALE_MS. */
+  function asOf(v) {
+    var t = typeof v === 'number' ? v : parseWhen(v);
+    if (!isFinite(t)) return '';
+    var dayOnly = typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
+    var old = Date.now() - (dayOnly ? t + 864e5 : t) > STALE_MS;
+    if (dayOnly) return '<span class="asof' + (old ? ' asof-old' : '') + '">' + (old ? '&#9888; ' : '') + 'for ' + esc(fmtDay(v)) +
+      (old ? ' &middot; older than this shift' : '') + '</span>';
+    return '<span class="asof' + (old ? ' asof-old' : '') + '">' + (old ? '&#9888; ' : '') + 'as of ' + esc(fmtDay(t)) +
+      (old ? ' &middot; older than this shift' : '') + '</span>';
+  }
+  /** A plan with an operational period: stale once that period has ended. */
+  function asOfShift(from, to) {
+    var end = parseWhen(to), start = parseWhen(from);
+    if (isFinite(end)) {
+      var over = end < Date.now();
+      return '<span class="asof' + (over ? ' asof-old' : '') + '">' + (over ? '&#9888; shift ended ' : 'until ') + esc(fmtDay(end)) + '</span>';
+    }
+    return asOf(start);
+  }
+  function statusBadge(st) {
+    var s = String(st || '').trim(); if (!s) return '';
+    var cls = /complete|done/i.test(s) ? 'badge-active' : /progress|working|assigned/i.test(s) ? 'badge-type' : 'badge-pending';
+    return ' <span class="badge ' + cls + '" style="margin-left:6px;">' + esc(s) + '</span>';
+  }
+  function newestInfo(d) {
+    var acts = ((d.actions && d.actions.current) || []).concat((d.actions && d.actions.planned) || []);
+    return newestOf([d.ics201 && d.ics201.datetime, d.comms205 && d.comms205.opFrom, d.hasp && d.hasp.timestamp]
+      .concat(acts.map(function (a) { return a.datetime; }))
+      .concat((d.assignments || []).map(function (a) { return a.date; })));
+  }
+  function workChartPeople(oc) {
+    var names = {};
+    if (!oc || !oc.icsAssignments) return 0;
+    Object.keys(oc.icsAssignments).forEach(function (k) {
+      var raw = oc.icsAssignments[k], people = [];
+      try { people = typeof raw === 'string' ? JSON.parse(raw) : (Array.isArray(raw) ? raw : []); } catch (e) { people = raw ? [{ name: String(raw) }] : []; }
+      people.forEach(function (p) { var n = String((p && p.name) || '').trim().toLowerCase(); if (n) names[n] = 1; });
+    });
+    return Object.keys(names).length;
+  }
+  function statusBox(d) {
+    var acts = ((d.actions && d.actions.current) || []).slice();
+    acts.sort(function (a, b) { return (parseWhen(b.datetime) || 0) - (parseWhen(a.datetime) || 0); });
+    var latest = acts[0];
+    var newest = newestInfo(d), old = isFinite(newest) && Date.now() - newest > STALE_MS;
+    var onScene = Array.isArray(d.roster) ? d.roster.length : null;
+    var staff = workChartPeople(d.orgChart);
+    var byType = {};
+    (d.tCards || []).forEach(function (t) { var k = String(t.type || 'Other').trim() || 'Other'; byType[k] = (byType[k] || 0) + 1; });
+    var equip = Object.keys(byType).sort().map(function (k) { return byType[k] + ' ' + k.toLowerCase(); }).join(', ');
+    var openReq = (d.openRequests || []).length;
+    var sm = d.safetyMessage && !d.safetyMessage.error ? d.safetyMessage : null;
+    var h = '<div class="sitstat-card status-box' + (old ? ' status-old' : '') + '">';
+    h += '<div class="card-title">Current status</div>';
+    if (isFinite(newest)) h += '<div class="status-age' + (old ? ' asof-old' : '') + '">' + (old ? '&#9888; ' : '') +
+      'Newest information: ' + esc(fmtDay(newest)) + ' (' + esc(ago(newest)) + ')' +
+      (old ? '. Nothing newer has been posted; call the incident team for today\'s status.' : '') + '</div>';
+    if (latest) h += '<div class="status-row"><b>Latest:</b> ' + esc(latest.action || '') +
+      (latest.datetime ? ' <span class="muted">(' + esc(fmtDay(latest.datetime)) + ')</span>' : '') + '</div>';
+    h += '<div class="status-row"><b>People:</b> ' + (onScene != null ? esc(String(onScene)) + ' checked in' : 'check-ins not available') +
+      (staff ? ' &middot; ' + esc(String(staff)) + ' on the work chart' : '') + '</div>';
+    if (equip) h += '<div class="status-row"><b>Equipment:</b> ' + esc(equip) + '</div>';
+    h += '<div class="status-row"><b>Open requests:</b> ' + esc(String(openReq)) + '</div>';
+    if (sm && (sm.message || (sm.hazards || []).length)) {
+      h += '<div class="status-row"><b>Safety:</b> ' + esc(String(sm.message || '').split('\n')[0].slice(0, 160)) +
+        ((sm.hazards || []).length ? ' <span class="muted">(' + sm.hazards.length + ' hazards listed)</span>' : '') + '</div>';
+    }
+    return h + '</div>';
   }
 
   function orgSectionHeader(label) {
