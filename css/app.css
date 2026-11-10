@@ -417,6 +417,33 @@
     .help-terms dd { margin: 0; color: var(--text-muted); line-height: 1.4; }
     .help-card .btn-row { margin-top: 16px; }
 
+    /* G2b 2026-11-10: one-line review cards, owner flag, bulk location, video state, PPE groups */
+    .card-summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; width: 100%; background: none; border: 0;
+      color: var(--text); text-align: left; padding: 4px 0 8px; cursor: pointer; font-family: var(--font); }
+    .card-summary .cs-name { font-weight: 700; color: var(--text-bright); }
+    .card-summary .cs-meta { font-size: 0.8rem; color: var(--text-muted); flex: 1; }
+    .card-summary .cs-from { font-style: italic; }
+    .card-summary .cs-edit { font-size: 0.8rem; color: var(--info); font-weight: 600; }
+    .card-qty { display: flex; gap: 10px; }
+    .card-qty > div { flex: 1; }
+    .card-foreign { background: rgba(231, 76, 60, 0.12); border: 1px solid var(--danger); color: var(--text); border-radius: var(--radius-sm);
+      padding: 6px 10px; font-size: 0.8rem; margin: 6px 0 8px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .card-foreign.kept { background: rgba(243, 156, 18, 0.12); border-color: var(--warning); }
+    .confirm-bulk { margin-bottom: 12px; font-size: 0.85rem; }
+    .confirm-bulk .bulk-row { display: flex; gap: 8px; margin-top: 4px; }
+    .confirm-bulk select { flex: 1; }
+    .type-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
+    .pending-note { font-size: 0.8rem; color: var(--text-muted); margin: -4px 0 10px; }
+    .wrrl-yours { font-size: 0.85rem; margin: 6px 0; color: var(--text); }
+    .wrrl-others summary { cursor: pointer; font-size: 0.85rem; color: var(--text-muted); margin: 10px 0 6px; }
+    .wrrl-warn { font-size: 0.8rem; color: var(--warning); }
+    .live-state { font-size: 0.95rem; color: var(--text); margin: 8px 0 12px; }
+    .live-other { margin-top: 18px; }
+    .live-other summary { cursor: pointer; color: var(--text-muted); font-size: 0.85rem; }
+    .ppe-group { font-size: 0.78rem; color: var(--text-muted); margin: 8px 0 2px; font-weight: 600; }
+    .ty-requests { font-size: 0.85rem; color: var(--text); text-align: left; background: var(--panel); border-radius: var(--radius);
+      padding: 10px 12px; margin-top: 10px; }
+
     /* G4 2026-11-10: Get help, first stop, safety today, language pick, plain report form */
     .app-header .gethelp-btn {
       padding: 6px 10px; min-height: 36px; border-radius: var(--radius-sm); border: 0; cursor: pointer;

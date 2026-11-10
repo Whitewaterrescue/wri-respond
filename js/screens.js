@@ -708,6 +708,13 @@
     if (repEl) repEl.textContent = String((window.APP && APP.reportCount) || 0);
     var reqEl = document.getElementById('tyRequestCount');
     if (reqEl) reqEl.textContent = String(window.myRequestCount ? myRequestCount() : 0);   // before Session.clear (per check-in)
+    // G2b 2026-11-10: after check-out the request numbers + who to call about them
+    var tyReq = document.getElementById('tyRequests');
+    if (tyReq) {
+      var ids = window.myRequestIds ? myRequestIds() : [];
+      tyReq.classList.toggle('hidden', !ids.length);
+      if (ids.length) tyReq.textContent = window.t('ty.reqs', { ids: ids.join(', '), line: '406-207-2027' });
+    }
     var unsentEl = document.getElementById('tyUnsent214');
     if (unsentEl) {
       unsentEl.textContent = '…';

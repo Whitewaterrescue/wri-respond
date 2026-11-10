@@ -11,7 +11,7 @@
   <!-- ?v= stamps pin this HTML to the exact CSS/JS build it shipped with —
        Pages' 10-min HTTP cache can otherwise mix old JS with new HTML (fatal
        skew, seen live 2026-08-24). Bump together with sw.js CACHE_VERSION. -->
-  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g4">
+  <link rel="stylesheet" href="css/app.css?v=2026-11-10-g5">
   <!-- Warm the connections the boot path needs: the GAS API call 302s through
        googleusercontent, and the ArcGIS SDK loads over both a no-cors pool
        (scripts/CSS) and a CORS pool (workers/wasm) — hence both variants.
@@ -272,6 +272,11 @@
             <button type="button" class="chip" data-type="Personnel" onclick="setManualType('Personnel')">Crew</button>
             <button type="button" class="chip" data-type="Other" onclick="setManualType('Other')">Other</button>
           </div>
+          <div class="type-hint">A truck or trailer you drive = <b>Vehicle</b>. A pump, boom, skimmer or light tower = <b>Equipment</b>. A boat = <b>Vessel</b>.</div>
+        </div>
+        <div class="form-group">
+          <label for="manualQty">How many?</label>
+          <input type="number" id="manualQty" min="1" max="20" value="1" style="max-width:110px;">
         </div>
         <div class="form-group">
           <label for="manualIdentifier">Identifier / Name</label>
@@ -341,7 +346,19 @@
       <!-- CONFIRMATION CARDS -->
       <div class="workspace-panel" id="ws-confirm">
         <h3 class="mb-12" id="confirmTitle">Review Resources</h3>
+        <div class="confirm-bulk" id="confirmBulk" style="display:none;">
+          <label for="bulkLocation">Use this location for all</label>
+          <div class="bulk-row">
+            <select id="bulkLocation" onchange="onLocationSelect(this, 'bulkLocationOther')">
+              <option value="">Select location...</option>
+              <option value="__custom__">Location not listed...</option>
+            </select>
+            <button type="button" class="btn btn-sm btn-secondary" onclick="applyBulkLocation()">Apply</button>
+          </div>
+          <input type="text" id="bulkLocationOther" class="hidden" placeholder="Enter location name" style="margin-top:8px;">
+        </div>
         <div id="confirmCards"></div>
+        <button type="button" class="btn btn-secondary btn-block mb-12" onclick="addAnotherLikeLast()">+ Add another like the last one</button>
         <div class="sticky-submit" id="confirmSubmitArea">
           <button class="btn btn-success btn-block" onclick="submitAllResources()">
             Submit All Resources
@@ -388,16 +405,18 @@
            only and destroyed ~3s after you leave; see that file for why. -->
       <div class="tab-pane" id="tab-live">
         <div class="live-launcher" id="liveLauncher">
-          <h2>Live Stream</h2>
-          <p class="live-sub">Live video from the WRI drones on this incident. Uses the incident access code.</p>
+          <h2 data-i18n="lv.title">Drone video</h2>
+          <p class="live-state" id="liveState" data-i18n="lv.checking">Checking for drone video…</p>
           <div class="live-actions">
-            <button class="btn btn-primary" type="button" id="droneWatchBtn" onclick="mountLive('drones')">Watch WRI drones</button>
+            <button class="btn btn-primary hidden" type="button" id="droneWatchBtn" onclick="mountLive('drones')" data-i18n="lv.watch">Watch drone video</button>
           </div>
-          <p class="live-sub">The incident drone / field camera feed, straight from Nova.</p>
+          <details class="live-other"><summary data-i18n="lv.other">Other video feed (Nova)</summary>
+          <p class="live-sub">The incident field camera feed from Nova, if one is running.</p>
           <div class="live-actions">
             <a class="btn btn-secondary" id="liveOpenBtn" target="_blank" rel="noopener">Open Live Stream &nearr;</a>
             <button class="btn btn-primary" type="button" id="liveWatchBtn" onclick="mountLive('nova')">Watch here</button>
           </div>
+          </details>
           <div class="live-status" id="liveStatus"></div>
           <div class="live-offline" id="liveOffline" style="display:none;">You are offline &mdash; the stream needs a connection.</div>
           <p class="live-note">&ldquo;Watch here&rdquo; plays inside this app and stops when you switch tabs, so it never
@@ -549,6 +568,7 @@
             <h3>My Submissions</h3>
             <button class="btn btn-sm btn-primary" onclick="openResourceUpload()">+ Add More</button>
           </div>
+          <p class="pending-note">New items stay <b>PENDING</b> until WRI's Resource Unit checks them in. Ask at staging if you need one sooner.</p>
           <div id="myResourcesList">
             <div class="empty-state">
               <div class="empty-icon">&#128230;</div>
@@ -635,6 +655,7 @@
         </div>
       </div>
 
+      <div id="tyRequests" class="ty-requests hidden"></div>
       <button class="btn btn-secondary btn-block mt-16" onclick="restartApp()">
         Sign in as someone else
       </button>
@@ -723,24 +744,24 @@
   <!-- ArcGIS SDK is lazy-loaded by js/map.js only when the Map tab first opens. -->
   <!-- No incident picker on the Gateway (G3 2026-11-10: it listed other clients' incidents).
        The QR link (?incident=) or the access code picks the incident. -->
-  <script src="js/i18n.js?v=2026-11-10-g4"></script>
-  <script src="js/config.js?v=2026-11-10-g4"></script>
-  <script src="js/obstypes.js?v=2026-11-10-g4"></script>
-  <script src="js/api.js?v=2026-11-10-g4"></script>
-  <script src="js/session.js?v=2026-11-10-g4"></script>
-  <script src="js/outbox.js?v=2026-11-10-g4"></script>
-  <script src="js/screens.js?v=2026-11-10-g4"></script>
-  <script src="js/arcgis-auth.js?v=2026-11-10-g4"></script>
-  <script src="js/map.js?v=2026-11-10-g4"></script>
-  <script src="js/maptools.js?v=2026-11-10-g4"></script>
-  <script src="js/recon.js?v=2026-11-10-g4"></script>
-  <script src="js/resources.js?v=2026-11-10-g4"></script>
-  <script src="js/requests.js?v=2026-11-10-g4"></script>
-  <script src="js/sitstat.js?v=2026-11-10-g4"></script>
-  <script src="js/livestream.js?v=2026-11-10-g4"></script>
-  <script src="js/safety.js?v=2026-11-10-g4"></script>
-  <script src="js/ics214.js?v=2026-11-10-g4"></script>
-  <script src="js/app.js?v=2026-11-10-g4"></script>
+  <script src="js/i18n.js?v=2026-11-10-g5"></script>
+  <script src="js/config.js?v=2026-11-10-g5"></script>
+  <script src="js/obstypes.js?v=2026-11-10-g5"></script>
+  <script src="js/api.js?v=2026-11-10-g5"></script>
+  <script src="js/session.js?v=2026-11-10-g5"></script>
+  <script src="js/outbox.js?v=2026-11-10-g5"></script>
+  <script src="js/screens.js?v=2026-11-10-g5"></script>
+  <script src="js/arcgis-auth.js?v=2026-11-10-g5"></script>
+  <script src="js/map.js?v=2026-11-10-g5"></script>
+  <script src="js/maptools.js?v=2026-11-10-g5"></script>
+  <script src="js/recon.js?v=2026-11-10-g5"></script>
+  <script src="js/resources.js?v=2026-11-10-g5"></script>
+  <script src="js/requests.js?v=2026-11-10-g5"></script>
+  <script src="js/sitstat.js?v=2026-11-10-g5"></script>
+  <script src="js/livestream.js?v=2026-11-10-g5"></script>
+  <script src="js/safety.js?v=2026-11-10-g5"></script>
+  <script src="js/ics214.js?v=2026-11-10-g5"></script>
+  <script src="js/app.js?v=2026-11-10-g5"></script>
   <script>
     // Registered after load so the SW install never competes with the boot
     // fetch. No install prompt anywhere — ambient browser UI only.

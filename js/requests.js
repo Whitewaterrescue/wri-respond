@@ -34,6 +34,7 @@
     return readAll().filter(function (r) { return !cid || !r.checkin_id || r.checkin_id === cid; });
   }
   window.myRequestCount = function () { return mine().length; };
+  window.myRequestIds = function () { return mine().map(function (r) { return r.id; }); };
 
   function deviceId() {
     try {
