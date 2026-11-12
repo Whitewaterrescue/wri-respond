@@ -48,7 +48,8 @@
     var types = Object.keys(TYPE_GROUP).map(function (t) { return "'" + t + "'"; }).join(',');
     var q = new URLSearchParams({ where: "project_name = '" + proj + "' AND observation_type IN (" + types + ")",
       outFields: '*', outSR: '4326', returnGeometry: 'true', resultRecordCount: '200', f: 'json' });
-    var reconP = fetch(url + '?' + q.toString(), { credentials: 'omit' }).then(function (r) { return r.json(); })
+    var reconP = !(i.recon_view_url || CONFIG.RECON_VIEW_URL) ? Promise.resolve({ features: [] })   // no public view: no recon places
+      : fetch(url + '?' + q.toString(), { credentials: 'omit' }).then(function (r) { return r.json(); })
       .then(function (j) { if (j.error) throw new Error(j.error.message || 'query failed'); return j.features || []; });
     var haspP = window.loadHaspCard ? loadHaspCard().catch(function () { return {}; }) : Promise.resolve({});
     loading = Promise.all([siteP, reconP.then(function (f) { return { ok: true, f: f }; }, function () { return { ok: false, f: [] }; }), haspP])

@@ -220,8 +220,8 @@
      project key. Layers saved without a filter are scoped by service. */
   var PROJECT_FILTER_RE = /\b(ProjectName|project_name|incident_id|IncidentID|project|Project)(\s*(?:=|LIKE)\s*)'([^']*)'/gi;
   var SCOPE_BY_SERVICE = [
-    // P5 Recon move: the recon public view moves from WRI_Recon_v3_public to WRI_Incident_Ops_Recon_public
-    { re: /\/WRI_(Recon_v3|Incident_Ops_Recon)_public\//i, field: 'project_name' },
+    // recon public views: v3, the old all-clients view, or one incident's WRI_Incident_Ops_Recon_<project>_public
+    { re: /\/WRI_(Recon_v3|Incident_Ops_Recon(_[A-Za-z0-9_]+?)?)_public\//i, field: 'project_name' },
     { re: /\/WRI_Incident_360_Panoramas_pub\//i, field: 'project_name' },
     { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' },
     // 2026-11-10: evacuation rings are per incident (Project = the project key)
@@ -248,11 +248,43 @@
     PROJECT_FILTER_RE.lastIndex = 0;
     if (nd && nd !== de) { try { lyr.definitionExpression = nd; } catch (e) {} }
   }
+  // 2026-11-12: one public recon view per incident. The saved gateway map points at the primary incident's
+  // view; a responder of another open incident gets their OWN view swapped in (same title, symbols, popup,
+  // place in the list). No view for the incident = the recon layer is hidden, never another incident's data.
+  var RECON_PUBLIC_RE = /\/WRI_(?:Recon_v3|Incident_Ops_Recon(?:_[A-Za-z0-9_]+?)?)_public\/FeatureServer/i;
+  function sameService(a, b) {
+    var s = function (u) { return String(u || '').replace(/\/FeatureServer.*$/i, '').toLowerCase(); };
+    return s(a) === s(b);
+  }
+  function swapReconLayer(lyr, inc) {
+    var want = String(inc.recon_view_url || '');
+    var proj = String(inc.project_key || inc.recon_project || '');
+    var parent = lyr.parent && lyr.parent.layers ? lyr.parent : null;
+    if (!want) {
+      try { lyr.definitionExpression = '1=0'; lyr.visible = false; lyr.listMode = 'hide'; } catch (e) {}
+      return null;
+    }
+    if (sameService(lyr.url, want) || !parent) return lyr;
+    var done = function () {
+      var props = { url: want, title: lyr.title, visible: lyr.visible, opacity: lyr.opacity, outFields: ['*'],
+                    definitionExpression: proj ? "project_name = '" + sqlEscape(proj) + "'" : '1=0' };
+      try { if (lyr.renderer) props.renderer = lyr.renderer.clone(); } catch (e) {}
+      try { if (lyr.popupTemplate) props.popupTemplate = lyr.popupTemplate.clone(); } catch (e) {}
+      try { if (lyr.labelingInfo) props.labelingInfo = lyr.labelingInfo.map(function (l) { return l.clone(); }); props.labelsVisible = lyr.labelsVisible; } catch (e) {}
+      var nl = new lyr.constructor(props);
+      var at = parent.layers.indexOf(lyr);
+      parent.layers.remove(lyr);
+      parent.layers.add(nl, at < 0 ? undefined : at);
+    };
+    lyr.when(done, done);   // the old view may already be private: swap anyway, with the default symbols
+    return null;
+  }
   function scopeMapToIncident(map) {
     var inc = (window.APP && APP.incident) || {};
     if (!map || !map.allLayers) return;
-    map.allLayers.forEach(function (lyr) {
+    map.allLayers.toArray().forEach(function (lyr) {
       if (lyr.type !== 'feature') return;
+      if (RECON_PUBLIC_RE.test(String(lyr.url || '')) && !swapReconLayer(lyr, inc)) return;
       lyr.when(function () { scopeLayerToIncident(lyr, inc); }, function () {});
     });
   }
@@ -557,7 +589,8 @@
             }
           });
 
-          map.addMany([resourceLayer, reconLayer]); // recon points render on top
+          // no public recon view for this incident (yet): no recon layer rather than another incident's data
+          map.addMany(reconUrl ? [resourceLayer, reconLayer] : [resourceLayer]); // recon points render on top
         }
 
         var viewProps = {
