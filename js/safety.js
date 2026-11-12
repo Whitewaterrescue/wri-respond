@@ -45,7 +45,8 @@
     var proj = String(i.recon_project || i.project_key || i.incident_name || '').replace(/'/g, "''");
     var q = new URLSearchParams({ where: "project_name = '" + proj + "' AND observation_type IN ('staging_area','planned_staging_area')",
       outFields: '*', outSR: '4326', f: 'json' });
-    stagingP = fetch(url + '?' + q.toString(), { credentials: 'omit' }).then(function (r) { return r.json(); }).then(function (j) {
+    stagingP = (!(i.recon_view_url || CONFIG.RECON_VIEW_URL) ? Promise.resolve({ features: [] })   // no public view: no recon staging
+      : fetch(url + '?' + q.toString(), { credentials: 'omit' }).then(function (r) { return r.json(); })).then(function (j) {
       var f = (j.features || []).slice().sort(function (a, b) {   // a real staging area before a planned one
         return (a.attributes.observation_type === 'staging_area' ? 0 : 1) - (b.attributes.observation_type === 'staging_area' ? 0 : 1);
       })[0];

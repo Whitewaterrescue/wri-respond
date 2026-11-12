@@ -6,9 +6,10 @@ self.CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbx7p4-A8F6G_VedgHsw3RDJgwJK1GKVAFcvSah1JdjIdG5g7PAcvXhHRKHk_ULIhdL0KA/exec',
 
   // Public read-only view layers (create_public_views.py). No token needed.
-  // RECON_VIEW_URL is only the fallback: the gateway's ?api=incident recon_view_url
-  // (WRI.reconUrls().public, the P5 switch) wins.
-  RECON_VIEW_URL:    'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/WRI_Recon_v3_public/FeatureServer/0',
+  // Recon (2026-11-12): each incident has its OWN public view, WRI_Incident_Ops_Recon_<project>_public; the
+  // gateway's ?api=incident recon_view_url names it ('' until it exists). No all-clients fallback: an incident
+  // without a view shows no recon rather than every client's points.
+  RECON_VIEW_URL:    '',
   RESOURCE_VIEW_URL: 'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/WRI_Resource_Manager_public/FeatureServer/0',
 
   // Per-incident public COP web map (activate_gateway_map.py). When set, the
