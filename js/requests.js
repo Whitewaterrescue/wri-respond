@@ -17,6 +17,9 @@
   var DEVICE_KEY = 'wri_respond_device';
   var STATUS_TTL_MS = 60 * 1000;
   var lastStatusAt = 0, statusCache = {}, refreshing = false;
+  // health #90: one idempotency key per request, kept across re-taps while the form is
+  // unchanged, so a resubmit after a lost reply replays on the server instead of writing twice.
+  var pendingRr = null;   // { key, body }
 
   function incidentId() { return String(((window.APP && APP.incident) || {}).incident_id || ''); }
   function checkinId() { var s = (window.Session && Session.get()) || {}; return String(s.checkin_id || ''); }
@@ -151,7 +154,10 @@
       arrival: (document.getElementById('rrArrival').value || '').trim(),
       notes: (document.getElementById('rrNotes').value || '').trim()
     };
-    apiPost('rr-submit', sent).then(function (data) {
+    var body = JSON.stringify(sent);
+    if (!pendingRr || pendingRr.body !== body) pendingRr = { key: apiUuid(), body: body };
+    apiPost('rr-submit', sent, { idempotencyKey: pendingRr.key }).then(function (data) {
+      pendingRr = null;
       btn.disabled = false;
       btn.textContent = 'Submit Request';
       var id = (data && data.request_id) || '';
