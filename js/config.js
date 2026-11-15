@@ -10,7 +10,9 @@ self.CONFIG = {
   // gateway's ?api=incident recon_view_url names it ('' until it exists). No all-clients fallback: an incident
   // without a view shows no recon rather than every client's points.
   RECON_VIEW_URL:    '',
-  RESOURCE_VIEW_URL: 'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/WRI_Resource_Manager_public/FeatureServer/0',
+  // 2026-11-15: no static fallback. The API hands out the incident's own WRI_Resource_Manager_<project>_public;
+  // the all-incidents view answered anyone with every incident's resources and is no longer public.
+  RESOURCE_VIEW_URL: '',
 
   // Per-incident public COP web map (activate_gateway_map.py). When set, the
   // map shows the incident's operational layers; when '', it falls back to
