@@ -223,7 +223,8 @@
     // recon public views: v3, the old all-clients view, or one incident's WRI_Incident_Ops_Recon_<project>_public
     { re: /\/WRI_(Recon_v3|Incident_Ops_Recon(_[A-Za-z0-9_]+?)?)_public\//i, field: 'project_name' },
     { re: /\/WRI_Incident_360_Panoramas_pub\//i, field: 'project_name' },
-    { re: /\/WRI_Resource_Manager_public\//i, field: 'incident_id' },
+    // resources public views: the old all-incidents view, or one incident's WRI_Resource_Manager_<project>_public
+    { re: /\/WRI_Resource_Manager(_[A-Za-z0-9_]+?)?_public\//i, field: 'incident_id' },
     // 2026-11-10: evacuation rings are per incident (Project = the project key)
     { re: /\/Evacuation_Zones[^/]*\//i, field: 'Project' }
   ];
@@ -590,7 +591,8 @@
           });
 
           // no public recon view for this incident (yet): no recon layer rather than another incident's data
-          map.addMany(reconUrl ? [resourceLayer, reconLayer] : [resourceLayer]); // recon points render on top
+          // recon points render on top; a kind with no public view for this incident is simply not shown
+          map.addMany([resourceUrl && resourceLayer, reconUrl && reconLayer].filter(Boolean));
         }
 
         var viewProps = {
