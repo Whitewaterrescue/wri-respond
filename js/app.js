@@ -210,6 +210,22 @@
       if (pinInc !== null && APP.incident && String(APP.incident.incident_id || '') !== pinInc) Session.pinOk.set(false);
     } catch (e) {}
     if (APP.incident && APP.incident.require_pin && !Session.pinOk.get()) {
+      // 2026-11-16: scanned the QR at the ICP? Its key stands in for the typed code.
+      // Any failure (old QR, no signal) falls back to the code screen.
+      var qk = window.qrKeyValue && qrKeyValue();
+      if (qk && window.incidentPin && incidentPin() && navigator.onLine !== false) {
+        showLoading('Checking the QR code...');
+        apiGet('qropen').then(function (inc) {
+          hideLoading();
+          if (inc && window.acceptAccessCode && acceptAccessCode(inc.access_code, inc.incident_id)) showScreen('signin');
+          else showPinGate();
+        }, function (err) {
+          hideLoading();
+          if (err && err.code === 'key_invalid' && window.clearQrKey) clearQrKey();
+          showPinGate();
+        });
+        return;
+      }
       showPinGate();
     } else {
       showScreen('signin');

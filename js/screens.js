@@ -138,6 +138,20 @@
   window._gwPin = '';
   try { window._gwPin = localStorage.getItem(PIN_STORE_KEY) || ''; } catch (e) {}
 
+  // The phone scanned the QR at the ICP (app.js): the Gateway answered with the
+  // incident's access code, so nothing is typed. Stored exactly as a typed code is.
+  window.acceptAccessCode = function (pin, incidentId) {
+    pin = String(pin || '');
+    if (!pin) return false;
+    window._gwPin = pin;
+    try {
+      localStorage.setItem(PIN_STORE_KEY, pin);
+      localStorage.setItem(PIN_STORE_KEY + '_inc', String(incidentId || ''));
+    } catch (e) {}
+    Session.pinOk.set(true);
+    return true;
+  };
+
   var pinSubmitting = false;
 
   window.pinInput = function (el, nextId) {
@@ -415,6 +429,7 @@
     }
     var payload = {
       pin: window._gwPin,
+      k: (window.qrKeyValue && qrKeyValue()) || undefined,   // rides with a queued check-in too (offline outbox)
       name: document.getElementById('signinName').value.trim(),
       organization: document.getElementById('signinOrg').value.trim(),
       role: observer ? 'Observer' : '',

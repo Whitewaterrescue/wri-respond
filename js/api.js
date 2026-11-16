@@ -124,10 +124,31 @@
   window.incidentPinFromUrl = function () { return /[?&]incident=[^&#]+/.test(location.search); };
   window.clearIncidentPin = function () { try { localStorage.removeItem(PIN_KEY); localStorage.removeItem('wri_incident_choice'); } catch (e) {} };
 
+  // QR key (2026-11-16). The QR posted at the ICP is …/?incident=<key>#k=<long key>.
+  // A phone that scanned it needs no typed access code, and keeps working when
+  // typed codes are locked after too many wrong guesses (Gateway QrKey.gs). The
+  // key rides in the fragment so it never reaches the page host or a referrer;
+  // it is read once, kept on this phone, and taken out of the address bar. It is
+  // sent only to the Gateway, which ignores a key that is not its incident's.
+  var QRK_KEY = 'wri_respond_qrkey';
+  (function readQrKeyFromLink() {
+    try {
+      var m = /[#&]k=([A-Za-z0-9_-]{20,64})(?:&|$)/.exec(location.hash || '');
+      if (!m) return;
+      localStorage.setItem(QRK_KEY, m[1]);
+      if (window.history && history.replaceState) history.replaceState(null, '', location.pathname + location.search);
+    } catch (e) {}
+  })();
+  function qrKeyValue() { try { return localStorage.getItem(QRK_KEY) || ''; } catch (e) { return ''; } }
+  window.qrKeyValue = qrKeyValue;
+  window.clearQrKey = function () { try { localStorage.removeItem(QRK_KEY); } catch (e) {} };
+
   window.apiGet = function (mode, params) {
     var q = Object.assign({ api: mode }, params || {});
     var pin = incidentPin();
     if (pin && !q.incident) q.incident = pin;
+    var qk = qrKeyValue();
+    if (qk && !q.k) q.k = qk;
     // attach session creds when present (harmless on open modes)
     var s = window.Session && Session.get();
     if (s && s.checkin_id) { q.cid = s.checkin_id; q.tok = s.session_token; }
@@ -150,6 +171,8 @@
     if (s && s.checkin_id) { env.checkin_id = s.checkin_id; env.session_token = s.session_token; }
     var pin = incidentPin();
     if (pin && !env.incident_id) env.incident_id = pin;   // queued drains carry queued_incident_id instead
+    var qk = qrKeyValue();
+    if (qk) env.k = qk;
     var body = JSON.stringify(env); // stable across retries -> server dedupes
     return request(CONFIG.API_URL, function () {
       return {
