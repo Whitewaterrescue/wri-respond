@@ -261,6 +261,31 @@
       html += statusBox(data);
       if (top && !whole) html += top;   // parts still loading / that did not load
 
+      // ---------- ICS 230 Meeting Schedule (WRI Planning; brief part 'meetings') ----------
+      if (data.meetings && data.meetings.length) {
+        var nowMs = Date.now();
+        var nextM = data.meetings.filter(function (m) { return m.start + (m.minutes || 30) * 60000 > nowMs; })[0] || data.meetings[data.meetings.length - 1];
+        var mWhen = function (ms) { return new Date(ms).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' }); };
+        html += '<div class="sitstat-section">';
+        html += '<div class="sitstat-section-header"><h3>Meeting Schedule (ICS 230)</h3></div>';
+        html += '<div class="sitstat-card" style="border-left:4px solid var(--info);">';
+        html += '<div class="card-body" style="font-size:0.78rem; color:var(--text-muted);">' + (nextM.start <= nowMs ? 'Happening now' : 'Next meeting') + '</div>';
+        html += '<div class="card-title">' + esc(nextM.name) + '</div>';
+        html += '<div class="card-body">' + esc(mWhen(nextM.start)) + (nextM.minutes ? ' &middot; ' + esc(String(nextM.minutes)) + ' min' : '') +
+                (nextM.location ? ' &middot; ' + esc(nextM.location) : '') + '</div>';
+        if (nextM.attendees) html += '<div class="card-body" style="font-size:0.78rem;">' + esc(nextM.attendees) + '</div>';
+        html += '</div>';
+        if (data.meetings.length > 1) {
+          html += '<table class="sitstat-table"><thead><tr><th>When</th><th>Meeting</th><th>Location</th></tr></thead><tbody>';
+          data.meetings.forEach(function (m) {
+            html += '<tr' + (m.start + (m.minutes || 30) * 60000 < nowMs ? ' style="opacity:.5"' : '') + '><td>' + esc(mWhen(m.start)) +
+                    '</td><td>' + esc(m.name) + '</td><td>' + esc(m.location || '') + '</td></tr>';
+          });
+          html += '</tbody></table>';
+        }
+        html += '</div>';
+      }
+
       // ---------- Pending Count Banner ----------
       if (data.pendingCount && data.pendingCount > 0) {
         html += '<div class="sitstat-card" style="border-left:4px solid var(--warning); margin-bottom:16px;">';
