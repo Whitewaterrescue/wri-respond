@@ -57,6 +57,8 @@
     return stagingP;
   };
   function sitstat() { return window.__sitstat || null; }
+  // 2026-11-16: the who-to-call part only (roster, work chart, contacts), merged into the Status board's data
+  function takePeople(d) { if (d && window.mergeSitStat) mergeSitStat(d); else if (d) window.__sitstat = d; }
   function contacts() { var d = sitstat(); return (d && d.contacts) || null; }
   function firstWithPhone(list) { return (list || []).filter(function (p) { return p.phone; })[0] || (list || [])[0] || null; }
   window.safetyOfficer = function () {
@@ -71,7 +73,7 @@
     render();
     ov.classList.add('active');
     var need = [];
-    if (!sitstat() && window.apiGet) need.push(apiGet('sitstat').then(function (d) { window.__sitstat = d; }).catch(function () {}));
+    if (!contacts() && window.apiGet) need.push(apiGet('sitstat', { part: 'people' }).then(takePeople).catch(function () {}));
     need.push(loadHaspCard());
     Promise.all(need).then(render, render);
     function render() {
@@ -184,7 +186,7 @@
     var paint = function () { document.getElementById('firstStopBody').innerHTML = firstStopHtml(sitstat() || {}); };
     paint();
     ov.classList.add('active');
-    Promise.all([loadStaging(), window.apiGet ? apiGet('sitstat').then(function (d) { window.__sitstat = d; }).catch(function () {}) : null]).then(paint, paint);
+    Promise.all([loadStaging(), window.apiGet ? apiGet('sitstat', { part: 'people' }).then(takePeople).catch(function () {}) : null]).then(paint, paint);
   };
   window.hideFirstStop = function () { var ov = document.getElementById('firstStopOverlay'); if (ov) ov.classList.remove('active'); };
 })();

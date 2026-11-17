@@ -75,80 +75,191 @@
 
   var SITSTAT_SNAP_KEY = 'wri_sitstat_snapshot';
 
+  // 2026-11-16: the board comes in five parts asked for at the same time (each its own server run, about
+  // 3-6 s each, where the whole board took 12-16 s and the radio plan alone sometimes stalled past the
+  // 30 s request limit). Each part is drawn as it arrives. A phone with no stored copy first gets the
+  // server's saved board (its last good copy, up to 6 h old, labelled with its time).
+  var SS_PARTS = ['brief', 'comms', 'ops', 'ext', 'people'];
+  var ssGen = 0, ssBusyAt = 0;
+  function partLabel(p) { return window.t('ss.part.' + p); }
+  function curInc() { return String(((window.APP && APP.incident) || {}).incident_id || ''); }
+  /** Merge one part into the shared board (safety.js reads window.__sitstat too). */
+  window.mergeSitStat = function (d) {
+    var inc = curInc();
+    if (!window.__sitstat || window.__sitstatInc !== inc) { window.__sitstat = {}; window.__sitstatInc = inc; }
+    Object.keys(d || {}).forEach(function (k) { if (k !== '_part' && k !== '_ms' && k !== 'built_at') window.__sitstat[k] = d[k]; });
+    return window.__sitstat;
+  };
+
   window.loadSitStat = function () {
     var contentEl = document.getElementById('sitstatContent');
     var refreshEl = document.getElementById('sitstatLastRefresh');
-    // G4 2026-11-10: show the last copy at once while the fresh one loads (it took ~55 s)
-    if (!contentEl.querySelector('.status-box')) {
+    var inc0 = curInc();
+    // one load at a time (the 90 s auto-refresh must not stack on a slow load); 2 min is "stuck"
+    if (ssBusyAt && Date.now() - ssBusyAt < 120000 && ssBusyInc === inc0) return;
+    var gen = ++ssGen;
+    ssBusyAt = Date.now(); ssBusyInc = inc0;
+    var have = {}, failed = {}, firstErr = null, savedAt = 0, pending = SS_PARTS.length;
+    var onScreen = !!contentEl.querySelector('.status-box') && window.__sitstat && window.__sitstatInc === inc0;
+
+    // G4 2026-11-10: show the last copy at once while the fresh one loads
+    if (!onScreen) {
       var snap0 = null;
       try { snap0 = JSON.parse(localStorage.getItem(SITSTAT_SNAP_KEY)); } catch (e) {}
-      var inc0 = String(((window.APP && APP.incident) || {}).incident_id || '');
       if (snap0 && snap0.data && (!snap0.incident_id || snap0.incident_id === inc0)) {
-        window.__sitstat = snap0.data;
-        renderSitStat(snap0.data, contentEl);
-        refreshEl.innerHTML = '<span class="spinner spinner-sm"></span> ' + esc(window.t ? t('st.updating') : 'Updating…');
+        window.__sitstat = null;
+        mergeSitStat(snap0.data);
+        onScreen = true;
+      } else {
+        window.__sitstat = null;
+        window.__sitstatInc = inc0;
       }
     }
+    if (onScreen) SS_PARTS.forEach(function (p) { have[p] = 'saved'; });
+    else {
+      // nothing on this phone: the server's saved board, if it has one (one quick cache read)
+      apiGet('sitstat', { part: 'saved' }).then(function (sv) {
+        if (gen !== ssGen || !sv) return;
+        SS_PARTS.forEach(function (p) {
+          var snap = sv[p];
+          if (have[p] || !snap || !snap.d) return;
+          mergeSitStat(snap.d);
+          have[p] = 'saved';
+          if (!savedAt || snap.at < savedAt) savedAt = snap.at;
+        });
+        draw();
+      }).catch(function () {});
+    }
 
-    apiGet('sitstat')
-      .then(function (data) {
-        if (!data) {
-          contentEl.innerHTML = '<div class="empty-state"><p>No situational data available</p></div>';
-          return;
-        }
+    function note() {
+      var waiting = SS_PARTS.filter(function (p) { return !have[p] && !failed[p]; }).map(partLabel);
+      var lost = SS_PARTS.filter(function (p) { return failed[p] && have[p] !== 'fresh'; }).map(partLabel);
+      var h = '';
+      if (waiting.length) h += '<div class="sitstat-card ss-loading"><div class="card-body"><span class="spinner spinner-sm"></span> ' +
+        esc(window.t('ss.loadingParts', { what: waiting.join(', ') })) + '</div></div>';
+      if (lost.length) h += '<div class="sitstat-card ss-lost" style="border-left:4px solid var(--warning);"><div class="card-body">' +
+        esc(window.t('ss.partFailed', { what: lost.join(', ') })) + '</div></div>';
+      return h;
+    }
+    function draw() {
+      var d = window.__sitstat || {};
+      d._peopleLoading = !have.people;
+      renderSitStat(d, contentEl, note());
+      if (pending > 0) {
+        refreshEl.innerHTML = '<span class="spinner spinner-sm"></span> ' + esc(savedAt
+          ? window.t('ss.savedFrom', { time: formatTime(new Date(savedAt).toISOString()) }) : window.t('st.updating'));
+      }
+    }
+    draw();
+    if (window.ensureSafetyData) ensureSafetyData(function () { if (gen === ssGen) draw(); });
+
+    function settle() {
+      ssBusyAt = 0;
+      var nFailed = Object.keys(failed).length;
+      if (nFailed === SS_PARTS.length) return allFailed(firstErr);
+      if (!nFailed) {
         // Last-known-good snapshot for offline rendering. localStorage quota
         // can overflow on huge attachment lists — snapshot is best-effort.
         try {
-          localStorage.setItem(SITSTAT_SNAP_KEY, JSON.stringify({
-            data: data, fetched_at: new Date().toISOString(),
-            incident_id: String(((window.APP && APP.incident) || {}).incident_id || '')
-          }));
+          var keep = {};
+          Object.keys(window.__sitstat || {}).forEach(function (k) { if (k.charAt(0) !== '_') keep[k] = window.__sitstat[k]; });
+          localStorage.setItem(SITSTAT_SNAP_KEY, JSON.stringify({ data: keep, fetched_at: new Date().toISOString(), incident_id: inc0 }));
         } catch (e) {}
-        window.__sitstat = data;
-        renderSitStat(data, contentEl);
-        if (window.ensureSafetyData) ensureSafetyData(function () { if (window.__sitstat) renderSitStat(window.__sitstat, contentEl); });
-        // G3 2026-11-10: say how old the INFORMATION is, not when the page loaded
-        var newest = newestInfo(data);
-        refreshEl.innerHTML = esc(window.t('ss.checked', { time: formatTime(new Date().toISOString()) })) +
-          (isFinite(newest) ? ' &middot; ' + esc(window.t('ss.newest', { ago: ago(newest) })) : '');
-        refreshEl.classList.toggle('stale-text', isFinite(newest) && Date.now() - newest > STALE_MS);
-      })
-      .catch(function (err) {
-        // Offline / unreachable: render the stale snapshot with an explicit
-        // "as of" banner rather than an error (design rule: staleness must
-        // be visible, but stale beats blank in the field).
-        if (err && err.transient) {
-          var snap = null;
-          try { snap = JSON.parse(localStorage.getItem(SITSTAT_SNAP_KEY)); } catch (e) {}
-          if (snap && snap.data) {
-            renderSitStat(snap.data, contentEl);
-            contentEl.insertAdjacentHTML('afterbegin',
-              '<div style="background:#78350f;color:#fde68a;padding:8px 12px;border-radius:8px;' +
-              'margin-bottom:12px;font-size:13px;font-weight:600;text-align:center;">' +
-              'Offline — showing data as of ' + esc(formatTime(snap.fetched_at)) + '</div>');
-            refreshEl.textContent = 'Offline';
-            return;
-          }
-          contentEl.innerHTML = '<div class="empty-state"><p>No connection — situational data will load when signal returns.</p></div>';
+      }
+      draw();
+      // G3 2026-11-10: say how old the INFORMATION is, not when the page loaded
+      var newest = newestInfo(window.__sitstat || {});
+      refreshEl.innerHTML = (nFailed ? esc(window.t('ss.partialAt', { time: formatTime(new Date().toISOString()) }))
+        : esc(window.t('ss.checked', { time: formatTime(new Date().toISOString()) }))) +
+        (isFinite(newest) ? ' &middot; ' + esc(window.t('ss.newest', { ago: ago(newest) })) : '');
+      refreshEl.classList.toggle('stale-text', isFinite(newest) && Date.now() - newest > STALE_MS);
+    }
+    function allFailed(err) {
+      // Offline / unreachable: render the stale snapshot with an explicit
+      // "as of" banner rather than an error (design rule: staleness must
+      // be visible, but stale beats blank in the field).
+      if (err && err.transient) {
+        var snap = null;
+        try { snap = JSON.parse(localStorage.getItem(SITSTAT_SNAP_KEY)); } catch (e) {}
+        if (snap && snap.data && (!snap.incident_id || snap.incident_id === inc0)) {
+          renderSitStat(snap.data, contentEl, '<div style="background:#78350f;color:#fde68a;padding:8px 12px;border-radius:8px;' +
+            'margin-bottom:12px;font-size:13px;font-weight:600;text-align:center;">' +
+            'Offline — showing data as of ' + esc(formatTime(snap.fetched_at)) + '</div>', true);
           refreshEl.textContent = 'Offline';
           return;
         }
-        if (handleAuthError(err)) return;
-        contentEl.innerHTML = '<div class="empty-state"><p>Error loading data: ' + esc(friendlyError(err)) + '</p></div>';
-        refreshEl.textContent = 'Update failed';
-      });
-  };
+        if (window.__sitstat && Object.keys(window.__sitstat).length > 1) { draw(); refreshEl.textContent = 'Offline'; return; }
+        contentEl.innerHTML = '<div class="empty-state"><p>No connection — situational data will load when signal returns.</p></div>';
+        refreshEl.textContent = 'Offline';
+        return;
+      }
+      if (handleAuthError(err)) return;
+      contentEl.innerHTML = '<div class="empty-state"><p>Error loading data: ' + esc(friendlyError(err)) + '</p></div>';
+      refreshEl.textContent = 'Update failed';
+    }
 
-  function renderSitStat(data, container) {
+    var authStop = false;
+    SS_PARTS.forEach(function (p) {
+      apiGet('sitstat', { part: p }).then(function (d) {
+        if (gen !== ssGen || authStop) return;
+        if (d) { mergeSitStat(d); have[p] = 'fresh'; delete failed[p]; }
+        else failed[p] = true;
+        if (--pending <= 0) settle(); else draw();
+      }).catch(function (err) {
+        if (gen !== ssGen || authStop) return;
+        if (!err || !err.transient) {
+          // a lost session: hand it over once and stop drawing this load
+          if (handleAuthError(err)) { authStop = true; ssBusyAt = 0; return; }
+        }
+        failed[p] = true;
+        if (!firstErr) firstErr = err;
+        if (--pending <= 0) settle(); else draw();
+      });
+    });
+  };
+  var ssBusyInc = '';
+
+  /**
+   * Redraw only the top-level cards/sections that changed: the HASP preview frame and the 201 map
+   * would reload on every part otherwise (the board is drawn up to six times per load now).
+   */
+  function patchHtml(el, html) {
+    var tpl = document.createElement('div');
+    tpl.innerHTML = html;
+    if (!el.querySelector(':scope > .status-box') || !tpl.querySelector(':scope > .status-box')) { el.innerHTML = html; return; }
+    var keyOf = function (n, seen) {
+      var h = n.querySelector('h3, .card-title');
+      var k = n.tagName + '.' + n.className + '|' + (h ? h.textContent : '');
+      seen[k] = (seen[k] || 0) + 1;
+      return k + '#' + seen[k];
+    };
+    var oldKids = [].slice.call(el.children), s1 = {}, oldBy = {};
+    oldKids.forEach(function (n) { oldBy[keyOf(n, s1)] = n; });
+    var s2 = {};
+    var plan = [].slice.call(tpl.children).map(function (n) {
+      var o = oldBy[keyOf(n, s2)];
+      return o && o.outerHTML === n.outerHTML ? o : n;
+    });
+    oldKids.forEach(function (o) { if (plan.indexOf(o) === -1) el.removeChild(o); });
+    [].slice.call(el.childNodes).forEach(function (n) { if (n.nodeType !== 1) el.removeChild(n); });
+    var at = el.firstElementChild;
+    plan.forEach(function (n) {
+      if (n === at) at = at.nextElementSibling;
+      else el.insertBefore(n, at);
+    });
+  }
+
+  function renderSitStat(data, container, top, whole) {
     // Same box the printed ICS 201 carries on a drill/exercise
-    var html = data.drill ? '<div style="border:3px solid #c00;background:#fff;color:#c00;text-align:center;' +
+    var html = (whole ? (top || '') : '') + (data.drill ? '<div style="border:3px solid #c00;background:#fff;color:#c00;text-align:center;' +
       'font:bold 15px Arial,sans-serif;letter-spacing:1px;padding:6px 8px;margin-bottom:16px;">' +
-      'EXERCISE / DRILL - THIS IS NOT A REAL INCIDENT</div>' : '';
+      'EXERCISE / DRILL - THIS IS NOT A REAL INCIDENT</div>' : '');
     try {
 
       if (window.firstStopHtml) html += firstStopHtml(data);
       if (window.safetyTodayHtml) html += safetyTodayHtml(data);
       html += statusBox(data);
+      if (top && !whole) html += top;   // parts still loading / that did not load
 
       // ---------- Pending Count Banner ----------
       if (data.pendingCount && data.pendingCount > 0) {
@@ -482,7 +593,8 @@
     } catch (e) {
       html = '<div style="color:#e94560;padding:20px;">Sit Stat render error: ' + esc(e.message) + '</div>';
     }
-    container.innerHTML = html;
+    if (whole) container.innerHTML = html;
+    else patchHtml(container, html);
   }
 
   /* ---------- G3 2026-11-10: how old each section is, and a current-status box ---------- */
@@ -564,7 +676,8 @@
       (old ? '. ' + esc(window.t('st.oldTail')) : '') + '</div>';
     if (latest) h += '<div class="status-row"><b>' + esc(window.t('st.latest')) + '</b> ' + esc(latest.action || '') +
       (latest.datetime ? ' <span class="muted">(' + esc(fmtDay(latest.datetime)) + ')</span>' : '') + '</div>';
-    h += '<div class="status-row"><b>' + esc(window.t('st.people')) + '</b> ' + (onScene != null ? esc(window.t('st.checkedIn', { n: onScene })) : esc(window.t('st.noCheckins'))) +
+    h += '<div class="status-row"><b>' + esc(window.t('st.people')) + '</b> ' + (d._peopleLoading && onScene == null ? '&hellip;'
+      : onScene != null ? esc(window.t('st.checkedIn', { n: onScene })) : esc(window.t('st.noCheckins'))) +
       (staff ? ' &middot; ' + esc(window.t('st.onChart', { n: staff })) : '') + '</div>';
     if (equip) h += '<div class="status-row"><b>' + esc(window.t('st.equip')) + '</b> ' + esc(equip) + '</div>';
     h += '<div class="status-row"><b>' + esc(window.t('st.req')) + '</b> ' + esc(String(openReq)) + '</div>';
