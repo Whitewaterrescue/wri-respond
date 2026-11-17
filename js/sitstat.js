@@ -286,6 +286,23 @@
         html += '</div>';
       }
 
+      // ---------- ICS 233 Open Actions (from WRI Planning) ----------
+      if (data.openActions && data.openActions.length) {
+        var nowA = Date.now();
+        var aWhen = function(ms) { return new Date(ms).toLocaleString([], { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+        var openN = data.openActions.filter(function(a) { return a.status === 'open'; }).length;
+        html += '<div class="sitstat-section">';
+        html += '<div class="sitstat-section-header"><h3>Open Actions (ICS 233) &middot; ' + openN + ' open</h3></div>';
+        html += '<table class="sitstat-table"><thead><tr><th>#</th><th>Action</th><th>Who</th><th>Deadline</th></tr></thead><tbody>';
+        data.openActions.forEach(function(a) {
+          var late = a.status === 'open' && a.due && a.due < nowA;
+          html += '<tr' + (a.status !== 'open' ? ' style="opacity:.55;text-decoration:line-through"' : '') + '><td>' + esc(String(a.n || '')) + '</td><td>' + esc(a.task) +
+                  (a.status !== 'open' ? ' (' + a.status + ')' : '') + '</td><td>' + esc(a.poc) + '</td><td' + (late ? ' style="color:var(--danger,#ef4444);font-weight:700"' : '') + '>' +
+                  (a.due ? esc(aWhen(a.due)) + (late ? ' overdue' : '') : '') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      }
+
       // ---------- Pending Count Banner ----------
       if (data.pendingCount && data.pendingCount > 0) {
         html += '<div class="sitstat-card" style="border-left:4px solid var(--warning); margin-bottom:16px;">';
