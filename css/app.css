@@ -1435,6 +1435,7 @@
     .t-card.status-available { border-left-color: var(--success); }
     .t-card.status-assigned { border-left-color: var(--info); }
     .t-card.status-oos { border-left-color: var(--danger); }
+    .t-card.status-ordered { border-left-color: var(--warning, #f59e0b); }
 
     .t-card .t-header {
       display: flex;
