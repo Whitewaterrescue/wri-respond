@@ -519,6 +519,7 @@
           groups[grp].forEach(function (tc) {
             var statusLower = (tc.status || '').toLowerCase();
             var statusClass = statusLower === 'available' || statusLower === 'staged' ? 'status-available' :
+              statusLower === 'ordered' || statusLower === 'en route' || statusLower === 'enroute' ? 'status-ordered' :
               statusLower === 'assigned' || statusLower === 'deployed' ? 'status-assigned' : 'status-oos';
             html += '<div class="t-card ' + statusClass + '">';
             html += '<div class="t-header">';
