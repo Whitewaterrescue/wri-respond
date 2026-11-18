@@ -359,12 +359,14 @@
           });
           html += '</ul>';
         }
-        // The 201 map: a Drive JPG shared by link. Offline it just doesn't load (no image in the snapshot).
-        if (data.ics201.map_image_url) {
-          var mapView = 'https://drive.google.com/file/d/' + encodeURIComponent((/[?&]id=([\w-]+)/.exec(data.ics201.map_image_url) || [])[1] || '') + '/view';
+        // The 201 map: a private Drive JPG, fetched through the Gateway (docgate.js). Offline it just doesn't load.
+        var mapId = docIdFromUrl(data.ics201.map_image_url);
+        if (mapId) {
+          var mapSrc = docSrc(mapId);
           html += '<div class="card-body" style="margin-top:8px;"><strong>Map:</strong>' +
-            '<a href="' + esc(mapView) + '" target="_blank" rel="noopener"><img src="' + esc(data.ics201.map_image_url) +
-            '" alt="ICS 201 map" loading="lazy" style="display:block;width:100%;height:auto;margin-top:4px;border-radius:6px;" onerror="this.style.display=\'none\'"></a></div>';
+            '<a href="#" data-doc-open="' + escAttr(mapId) + '" data-doc-name="ICS 201 map"><img data-doc-img="' + escAttr(mapId) + '"' +
+            (mapSrc ? ' src="' + escAttr(mapSrc) + '"' : '') +
+            ' alt="ICS 201 map" style="display:block;width:100%;height:auto;margin-top:4px;border-radius:6px;"></a></div>';
         }
         html += '</div></div>';
       }
@@ -394,7 +396,7 @@
         if (cp.specialInstructions) {
           html += '<div class="sitstat-card"><div class="card-body" style="white-space:pre-wrap;"><strong>Special instructions:</strong> ' + esc(cp.specialInstructions) + '</div></div>';
         }
-        if (cp.pdfUrl) html += '<div class="card-body"><a href="' + esc(cp.pdfUrl) + '" target="_blank" rel="noopener">ICS 205 PDF</a></div>';
+        if (docIdFromUrl(cp.pdfUrl)) html += '<div class="card-body"><a href="#" data-doc-open="' + escAttr(docIdFromUrl(cp.pdfUrl)) + '" data-doc-name="ICS 205">ICS 205 PDF</a></div>';
         html += '</div>';
       }
 
@@ -584,14 +586,15 @@
         if (data.hasp.creator) html += 'Created by: ' + esc(data.hasp.creator) + '<br>';
         if (data.hasp.timestamp) html += 'Written: ' + esc(isFinite(parseWhen(data.hasp.timestamp)) ? fmtDay(data.hasp.timestamp) : data.hasp.timestamp);
         html += '</div>';
-        if (data.hasp.docUrl) {
-          var previewUrl = data.hasp.docUrl.replace(/\/edit.*$/, '/preview');
-          html += '<div style="margin:8px 0;"><iframe src="' + escAttr(previewUrl) + '" style="width:100%; height:400px; border:1px solid var(--border); border-radius:var(--radius-sm);" loading="lazy"></iframe></div>';
+        // The HASP is a private Google Doc: the Gateway hands it over as a PDF (docgate.js).
+        var haspId = docIdFromUrl(data.hasp.docUrl);
+        if (haspId) {
+          var haspSrc = docSrc(haspId);
+          html += '<div style="margin:8px 0;"><iframe data-doc-frame="' + escAttr(haspId) + '"' + (haspSrc ? ' src="' + escAttr(haspSrc) + '"' : '') +
+            ' title="HASP" style="width:100%; height:400px; border:1px solid var(--border); border-radius:var(--radius-sm);"></iframe></div>';
           html += '<div style="display:flex; gap:10px; margin-top:8px;">';
-          html += '<a href="' + escAttr(data.hasp.docUrl) + '" target="_blank" rel="noopener" style="color:var(--info); font-size:0.82rem;">Open in Docs</a>';
-          if (data.hasp.url) {
-            html += '<a href="' + escAttr(data.hasp.url) + '" target="_blank" rel="noopener" style="color:var(--info); font-size:0.82rem;">Download PDF</a>';
-          }
+          html += '<a href="#" data-doc-open="' + escAttr(haspId) + '" data-doc-name="HASP" style="color:var(--info); font-size:0.82rem;">Open full PDF</a>';
+          html += '<a href="#" data-doc-download="' + escAttr(haspId) + '" data-doc-name="HASP" style="color:var(--info); font-size:0.82rem;">Download PDF</a>';
           html += '</div>';
         }
         html += '</div></div>';
@@ -617,7 +620,10 @@
         html += '<div class="sitstat-section-header"><h3>201 Attachments (' + attachments.length + ')</h3></div>';
         html += '<div style="display:flex;flex-direction:column;gap:6px;">';
         attachments.forEach(function (a) {
-          html += '<a href="' + escAttr(a.url || '#') + '" target="_blank" rel="noopener" ' +
+          var attId = docIdFromUrl(a.url);
+          html += (attId
+            ? '<a href="#" data-doc-open="' + escAttr(attId) + '" data-doc-name="' + escAttr(a.name || 'Attachment') + '" '
+            : '<a href="' + escAttr(a.url || '#') + '" target="_blank" rel="noopener" ') +
             'style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--panel-light);' +
             'border:1px solid var(--border);border-radius:4px;color:var(--text);' +
             'text-decoration:none;font-size:0.85rem;">' +
@@ -638,6 +644,7 @@
     }
     if (whole) container.innerHTML = html;
     else patchHtml(container, html);
+    if (window.docGateHydrate) docGateHydrate(container);   // 201 map, HASP preview (docgate.js)
   }
 
   /* ---------- G3 2026-11-10: how old each section is, and a current-status box ---------- */
