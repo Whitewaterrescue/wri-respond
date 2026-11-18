@@ -296,23 +296,13 @@
   // and recon points, rather than in an iframe carrying its own map. River/stream tier
   // only -- an open-water spill says so plainly and links to the full widget instead of
   // silently returning nothing.
-  var FULL_WIDGET = 'https://whitewaterrescue.github.io/wri-exb-widgets/embed/?config=all-grps';
+  var FULL_WIDGET = 'https://whitewaterrescue.github.io/wri-exb-widgets/embed/?config=public';
 
-  // ONLY anonymously-readable services. Every one is probed in the rig; a secured layer
-  // here would make the SDK prompt a responder to sign in, which is the one thing this
-  // app must never do. Snake, Jocko, BNSF FRP, WA ECY and Duluth are deliberately absent.
-  var SVC = 'https://services6.arcgis.com/Ji79lWGR5B33LhY7/arcgis/rest/services/';
-  var SITE_LAYERS = [
-    { url: SVC + 'Clarkfork_River_GRP_Points_2025/FeatureServer/0', nameField: 'Site_Name' },
-    { url: SVC + 'Missouri_River_GRP_Points_2025/FeatureServer/0', nameField: 'Location_Description' },
-    { url: SVC + 'Upper_Colorado_GRP_Points_2025/FeatureServer/0', nameField: 'Site_Name' },
-    { url: SVC + 'Yellowstone_River_GRP_Points_2025_5/FeatureServer/0', nameField: 'Site_Name' },
-    { url: SVC + 'Lochsa_River_GRP_Points_2025/FeatureServer/0', nameField: 'Location_Description' },
-    { url: SVC + 'Kootenai_River_GRP_Points_2025/FeatureServer/0', nameField: 'Site_Name' },
-    { url: SVC + 'Upper_Kootenai_River_GRP_Points_2025/FeatureServer/0', nameField: 'Location_Description' },
-    { url: SVC + 'MF_Flathead_GRP_Points_2025_WFL1/FeatureServer/0', nameField: 'Site_Name' },
-    { url: SVC + 'WRI_GRP_WAB_pub/FeatureServer/0', nameField: 'site_name' }
-  ];
+  // GRP sites come from the WRI GRP Sites service (wri-appscript wri-grp-sites-public), not from the layers:
+  // the GRP layers are org-only (Cody 2026-11-18: the Clark Fork GRP must not be public). The trace line goes
+  // out; site NAMES + an index into that line come back (no site coordinates), so nothing here can prompt a
+  // sign-in. FRPs are not in the service.
+  var SITE_SVC = 'https://script.google.com/macros/s/AKfycby615cqVbWLHp8rMW4WgRpzf-Co7oMZX1Chekak3UaGedUD8ef_6eqxPhPYaQVKyrje/exec';
   // timingModel MUST match the response viewers. 'jobson' tracks the LEADING EDGE
   // (t_lead, USGS WRIR 96-4013 dye-study regressions); 'hydraulic' tracks the PEAK
   // (cum_time). The gateway shipped on hydraulic and read ~36% short against the WRI
@@ -330,45 +320,26 @@
     return [parseInt(x.slice(1, 3), 16), parseInt(x.slice(3, 5), 16), parseInt(x.slice(5, 7), 16)];
   }
 
-  // A single query is capped at the layer's maxRecordCount (often 2000); large GRP sets
-  // truncate silently without paging.
-  function queryAll(fl, q) {
-    var out = [];
-    q.num = 2000;
-    function page() {
-      q.start = out.length;
-      return fl.queryFeatures(q).then(function (fs) {
-        out = out.concat(fs.features);
-        if (!fs.exceededTransferLimit || !fs.features.length || out.length > 50000) return out;
-        return page();
-      });
+  // Ask the service which GRP sites lie within 500 m of this trace; they become ordinary site features
+  // (pinned to the trace point the service names) for the engine's own ETA step. Failure only drops the list.
+  function askSites(data, cfg, notes) {
+    var pre = ST.computeTrace(data, cfg), tr = pre.trace || [];
+    if (tr.length < 2) return Promise.resolve();
+    var step = Math.max(1, Math.ceil(tr.length / 3500)), line = [];
+    for (var k = 0; k < tr.length; k += step) line.push([+tr[k].lat.toFixed(6), +tr[k].lon.toFixed(6)]);
+    if ((tr.length - 1) % step) line.push([+tr[tr.length - 1].lat.toFixed(6), +tr[tr.length - 1].lon.toFixed(6)]);
+    function once() {
+      return fetch(SITE_SVC, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ line: line }) })
+        .then(function (r) { return r.json(); });
     }
-    return page();
-  }
-
-  function siteProviders(notes) {
-    return SITE_LAYERS.map(function (lc) {
-      return {
-        buffer_m: 500,
-        fetch: function () {
-          var fl = new E.FeatureLayer({ url: lc.url });
-          var q = fl.createQuery();
-          q.where = '1=1';
-          q.outFields = [lc.nameField];
-          q.returnGeometry = true;
-          q.outSpatialReference = { wkid: 4326 };
-          return queryAll(fl, q).then(function (feats) {
-            return feats.filter(function (f) { return f.geometry && f.geometry.type === 'point'; })
-              .map(function (f) {
-                return { name: f.attributes[lc.nameField], lat: f.geometry.y, lon: f.geometry.x };
-              });
-          }).catch(function () {
-            notes.push(lc.url.split('/services/')[1].split('/')[0] + ' unavailable');
-            return [];
-          });
-        }
-      };
-    });
+    var timeout = new Promise(function (r) { setTimeout(function () { r(null); }, 30000); });
+    return Promise.race([once().catch(function () { return once(); }).catch(function () { return null; }), timeout])
+      .then(function (ans) {
+        if (!ans || !ans.ok) { notes.push('GRP site list unavailable right now; the trace itself is complete.'); return; }
+        data.siteSets = [{ buffer_m: 500, feats: ans.sites.map(function (x) {
+          return { name: x.name, plan: x.plan, lat: line[x.i][0], lon: line[x.i][1] };
+        }) }];
+      });
   }
 
   function stDraw(res, lat, lon) {
@@ -436,8 +407,8 @@
       sites.forEach(function (s) {
         // engine field is dist_km (km downstream along the trace); offset_m is how far
         // the site sits OFF the trace line -- both come from proximity() in trace-engine.js
-        h += '<tr><td>' + esc(s.name) +
-             (s.offset_m == null ? '' : ' <small>' + s.offset_m + ' m off</small>') + '</td><td>' +
+        h += '<tr><td>' + esc(s.name) + (s.plan ? ' <small>' + esc(s.plan) + '</small>' : '') +
+             (s.offset_m == null || s.plan ? '' : ' <small>' + s.offset_m + ' m off</small>') + '</td><td>' +
              (s.eta_hr == null ? '-' : s.eta_hr.toFixed(1) + ' h') + '</td><td>' +
              (s.dist_km == null ? '-' : s.dist_km.toFixed(1)) + '</td></tr>';
       });
@@ -499,7 +470,7 @@
           var bo = bodyEl(); if (bo) bo.dataset.ready = '1';
           return;
         }
-        var cfg = Object.assign({}, ST_CFG, { siteProviders: siteProviders(notes) });
+        var cfg = Object.assign({}, ST_CFG, { siteProviders: [] });
         setBody('<p class="dg-hint">Fetching hydrology from USGS…</p>');
         return withTimeout(ST.fetchTraceData(lat, lon, cfg), 150000, TIMED_OUT)
           .then(function (data) {
@@ -512,9 +483,13 @@
               var bt = bodyEl(); if (bt) bt.dataset.ready = '1';
               return;
             }
-            var res = ST.computeTrace(data, cfg);
-            stDraw(res, lat, lon);
-            stRender(res, notes);
+            setBody('<p class="dg-hint">Checking GRP sites along the trace…</p>');
+            return askSites(data, cfg, notes).then(function () {
+              if (job.cancelled) return;
+              var res = ST.computeTrace(data, cfg);
+              stDraw(res, lat, lon);
+              stRender(res, notes);
+            });
           });
       })
       .catch(function (e) {
