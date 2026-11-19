@@ -724,6 +724,15 @@
       (staff ? ' &middot; ' + esc(window.t('st.onChart', { n: staff })) : '') + '</div>';
     if (equip) h += '<div class="status-row"><b>' + esc(window.t('st.equip')) + '</b> ' + esc(equip) + '</div>';
     h += '<div class="status-row"><b>' + esc(window.t('st.req')) + '</b> ' + esc(String(openReq)) + '</div>';
+    var rc = d.recovery && !d.recovery.error && d.recovery.totals ? d.recovery : null;   // the recovery balance (Recovery_Log)
+    if (rc && (rc.count || rc.totals.recovered_bbl)) {
+      var n1 = function (v) { return v == null ? '–' : Number(v).toLocaleString(undefined, { maximumFractionDigits: 1 }); };
+      h += '<div class="status-row"><b>' + esc(window.t('st.recovered')) + '</b> ' + esc(n1(rc.totals.recovered_bbl)) + ' bbl (' +
+        esc(Math.round((rc.totals.recovered_bbl || 0) * 42).toLocaleString()) + ' gal)' +
+        (rc.estimate ? ' / ' + esc(n1(rc.estimate.bbl)) + ' bbl est.' : '') +
+        ' &middot; ' + esc(window.t('st.onSite')) + ' ' + esc(n1(rc.totals.on_site_bbl)) + ' bbl' +
+        (rc.capacity_bbl ? ' / ' + esc(n1(rc.capacity_bbl)) + ' bbl ' + esc(window.t('st.storage')) + ' (' + esc(String(rc.pct_full)) + '%)' : '') + '</div>';
+    }
     if (sm && (sm.message || (sm.hazards || []).length)) {
       h += '<div class="status-row"><b>' + esc(window.t('st.safety')) + '</b> ' + esc(String(sm.message || '').split('\n')[0].slice(0, 160)) +
         ((sm.hazards || []).length ? ' <span class="muted">(' + sm.hazards.length + ' hazards listed)</span>' : '') + '</div>';
