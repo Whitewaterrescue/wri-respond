@@ -291,6 +291,24 @@
   }
   window.wriScopeMapToIncident = scopeMapToIncident;   // test handle
 
+  // 2026-11-22 public layers chooser: which public map this incident shows (gateway ?api=incident).
+  //   'incident' -> public_map_id: exactly what the responsible party approved (its views are already this
+  //                 incident's only, so no client-side re-scoping)
+  //   'none'     -> basemap only: nothing incident-specific (a real incident before approval, or withdrawn)
+  //   'gateway' / missing (older gateway) -> the curated gateway map, as before
+  function publicMapMode(inc) {
+    var m = String((inc && inc.public_map_mode) || '');
+    if (m === 'incident' && inc.public_map_id) return 'incident';
+    return m === 'none' ? 'none' : 'gateway';
+  }
+  function publicWebmapId(inc) {
+    var mode = publicMapMode(inc);
+    if (mode === 'incident') return String(inc.public_map_id);
+    if (mode === 'none') return '';
+    return (inc && inc.gateway_webmap_id) || CONFIG.GATEWAY_WEBMAP_ID || '';
+  }
+  window.wriPublicWebmapId = publicWebmapId;   // test handle
+
   function purgeKmlOnPhone(map) {
     if (!isPhone() || !map.allLayers) return;
     function drop(lyr) {
@@ -523,7 +541,8 @@
         var reconUrl = layerBaseUrl(inc, 'recon');
         var resourceUrl = layerBaseUrl(inc, 'resource');
         // API value wins; fall back to the static config id.
-        var webmapId = inc.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '';
+        var webmapId = publicWebmapId(inc);
+        var pubMode = publicMapMode(inc);
 
         // OPT-IN staff view: a WRI member who signed in gets the full stable
         // incident map on their OWN token. Everyone else — the default — gets
@@ -592,7 +611,7 @@
 
           // no public recon view for this incident (yet): no recon layer rather than another incident's data
           // recon points render on top; a kind with no public view for this incident is simply not shown
-          map.addMany([resourceUrl && resourceLayer, reconUrl && reconLayer].filter(Boolean));
+          if (pubMode !== 'none') map.addMany([resourceUrl && resourceLayer, reconUrl && reconLayer].filter(Boolean));
         }
 
         var viewProps = {
@@ -672,7 +691,7 @@
           // Key places (same list as the Field App's): command post, staging, ramps, decon, LZs, aid, hospitals
           if (window.initKeyPlaces) mapView.ui.add(initKeyPlaces(mapView, { Graphic: Graphic }), 'top-left');
 
-          if (usingWebMap) scopeMapToIncident(map);
+          if (usingWebMap && (staffMap || pubMode !== 'incident')) scopeMapToIncident(map);   // the incident's own public map is already scoped
           if (usingWebMap) scopeResponsePlans(map, mapView);
 
           // On a webmap, wire attachment-aware popups onto any feature layer
@@ -725,7 +744,8 @@
     loadArcGIS().then(function (require) {
       require(['esri/Map', 'esri/views/MapView', 'esri/WebMap'], function (EsriMap, MapView, WebMap) {
         var inc = (window.APP && APP.incident) || {};
-        var webmapId = inc.gateway_webmap_id || CONFIG.GATEWAY_WEBMAP_ID || '';
+        var webmapId = publicWebmapId(inc);
+        var pubMode = publicMapMode(inc);
         var viewProps = {
           container: 'reconMiniMap',
           ui: { components: ['zoom'] },
@@ -742,7 +762,7 @@
         reconMiniView = new MapView(viewProps);
         window._reconView = reconMiniView; // headless test handle (no token, public map)
         reconMiniView.when(function () {
-          if (webmapId) scopeMapToIncident(viewProps.map);
+          if (webmapId && pubMode !== 'incident') scopeMapToIncident(viewProps.map);
           window.reconMapReady = true; // signals tap-to-place is armed (tests key on this)
           // If GPS landed before the picker finished loading, draw it now.
           if (window.reconPoint) setReconGraphic(window.reconPoint.lat, window.reconPoint.lon);
