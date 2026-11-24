@@ -27,7 +27,7 @@
  *  - Background Sync ('wri-outbox') drains the IndexedDB outbox with no
  *    page open (Android; iOS drains at app start instead).
  */
-var CACHE_VERSION = '2026-11-19-r1';
+var CACHE_VERSION = '2026-11-24-r1';
 var CACHE_NAME = 'wri-respond-' + CACHE_VERSION;
 
 importScripts('js/config.js', 'js/outbox.js');
@@ -77,6 +77,9 @@ var PRECACHE = [
   './assets/icons/icon-maskable-512.png',
   // Observation-type icons for the Add to COP picker (assets/obs/)
   './assets/obs/aid_station.png',
+  './assets/obs/jic.png',
+  './assets/obs/waste_disposal.png',
+  './assets/obs/wildlife_rehab.png',
   './assets/obs/stop_work.png',
   './assets/obs/boat_ramp.png',
   './assets/obs/current_boom_site.png',

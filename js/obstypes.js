@@ -17,8 +17,10 @@ self.OBS_TYPES = [
   { category: 'Observations', code: 'other_observation', label: 'Other Observation',  icon: 'other_observation' },
   // Response Actions
   { category: 'Response Actions', code: 'safety_briefing',      label: 'Safety Briefing',       icon: 'safety_briefing' },
-  { category: 'Response Actions', code: 'current_boom_site',    label: 'Current Boom Site',     icon: 'current_boom_site' },
-  { category: 'Response Actions', code: 'planned_boom_site',    label: 'Planned Boom Site',     icon: 'planned_boom_site' },
+  // (hidden 2026-11-24, Cody: boom is drawn as Boom_Lines now; uncomment to bring back)
+  // { category: 'Response Actions', code: 'current_boom_site',    label: 'Current Boom Site',     icon: 'current_boom_site' },
+  // (hidden 2026-11-24, Cody: boom is drawn as Boom_Lines now; uncomment to bring back)
+  // { category: 'Response Actions', code: 'planned_boom_site',    label: 'Planned Boom Site',     icon: 'planned_boom_site' },
   { category: 'Response Actions', code: 'recovery_complete',    label: 'Recovery Complete',     icon: 'recovery_complete' },
   { category: 'Response Actions', code: 'drone_flight',         label: 'Drone Flight',          icon: 'drone_flight' },
   { category: 'Response Actions', code: 'response_action',      label: 'Response Action',       icon: 'response_action' },
@@ -32,6 +34,10 @@ self.OBS_TYPES = [
   { category: 'Response Actions', code: 'road_closure',         label: 'Road Closure',          icon: 'road_closure' },
   { category: 'Response Actions', code: 'aid_station',          label: 'Aid Station',           icon: 'aid_station' },
   { category: 'Response Actions', code: 'decon',                label: 'Decon',                 icon: 'decon' },
+  // 2026-11-24 (COP Phase F): facilities from the BNSF COP card
+  { category: 'Response Actions', code: 'jic',                  label: 'Joint Information Center', icon: 'jic' },
+  { category: 'Response Actions', code: 'waste_disposal',       label: 'Waste Disposal Area',   icon: 'waste_disposal' },
+  { category: 'Response Actions', code: 'wildlife_rehab',       label: 'Wildlife Rehab Center', icon: 'wildlife_rehab' },
   { category: 'Response Actions', code: 'scat',                 label: 'SCAT Point',            icon: 'scat_point' },
   { category: 'Response Actions', code: 'other_action',         label: 'Other Action',          icon: 'other_action' },
   // Safety — accepted and stored, but the public COP map's recon view
